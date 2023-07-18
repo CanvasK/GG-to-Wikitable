@@ -1,4 +1,4 @@
-from helper import *
+import helper
 import math
 import re
 import configparser
@@ -134,7 +134,7 @@ print("="*10 + " Starting queries")
 
 
 # Data about the event that doesn't change
-eventData = event_data_slug(slugURL, 1, queryOnceData, header)
+eventData = helper.event_data_slug(slugURL, 1, queryOnceData, header)
 phaseData = eventData['phases']
 phaseBrackets = []
 for p in phaseData:
@@ -174,7 +174,7 @@ standingsList = list()
 
 # Loop through pages until limit is reached
 for p in range(1, totalPages+1):
-	eventStandingData = event_data_slug(slugURL, p, targetQuery, header)
+	eventStandingData = helper.event_data_slug(slugURL, p, targetQuery, header)
 	eventStandingListTemp = eventStandingData['standings']['nodes']
 
 	# If the returned page is empty, then there are no more pages to go through
@@ -216,9 +216,9 @@ if rosterSize == 1:
 		playerID = row['entrant']['id']
 
 		smasherName = row['entrant']['name'].split("|")[-1].strip()
-		country = parse_flag(row)
-		smasherString = smasher_link(smasherName, country, row['placement'] <= maxLink)
-		placement = make_ordinal(row['placement'])
+		country = helper.parse_flag(row)
+		smasherString = helper.smasher_link(smasherName, country, row['placement'] <= maxLink)
+		placement = helper.make_ordinal(row['placement'])
 		charHeads = ""
 
 		# DQ stuff
@@ -284,8 +284,8 @@ elif rosterSize == 2:
 
 		for i in range(2):
 			sName = teamMembers[i]['participant']['gamerTag'].split("|")[-1].strip()
-			sCountry = parse_flag(teamMembers[i]['participant'])
-			sString = smasher_link(sName, sCountry, row['placement'] <= maxLink)
+			sCountry = helper.parse_flag(teamMembers[i]['participant'])
+			sString = helper.smasher_link(sName, sCountry, row['placement'] <= maxLink)
 
 			smasherStrings.append(sString)
 		# # Teammate 1
@@ -299,7 +299,7 @@ elif rosterSize == 2:
 		# smasherString2 = smasher_link(smasherName2, country2, row['placement'] <= maxLink)
 
 		# Append to table
-		tableString += rowString.format(place=make_ordinal(row['placement']),
+		tableString += rowString.format(place=helper.make_ordinal(row['placement']),
 										p1=smasherStrings[0],
 										p2=smasherStrings[1])
 
