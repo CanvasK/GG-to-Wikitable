@@ -5,4 +5,4 @@ others/
 old/
 __pycache__/
 .idea/
-git update-index --assume-unchanged [config.cfg]
+$ git update-index --assume-unchanged [config.cfg]
