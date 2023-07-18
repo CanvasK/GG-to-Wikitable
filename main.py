@@ -227,6 +227,7 @@ if rosterSize == 1:
 		smasherName = row['entrant']['name'].split("|")[-1].strip()
 		country = helper.get_flag(row)
 		smasherString = helper.smasher_link(smasherName, country, row['placement'] <= maxLink)
+
 		placement = helper.make_ordinal(row['placement'])
 		charHeads = ""
 
@@ -250,6 +251,7 @@ if rosterSize == 1:
 			else:
 				dqSets.append(None)
 
+		# If the player gets too many DQs, they are considered to have a full DQ
 		if len(dqSets) - maxDq == dqSets.count(None):
 			smasherString += " (DQ)"
 
@@ -262,6 +264,8 @@ if rosterSize == 1:
 			if dqBracket == "winners":
 				if dqBracket not in dqOrder:
 					dqOrder.append(dqBracket)
+
+			# If the player is already listed as a full DQ, ignore
 			if not smasherString.endswith(" (DQ)"):
 				placement += "*" * (dqOrder.index(dqBracket) + 1)
 
