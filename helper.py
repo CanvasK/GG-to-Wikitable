@@ -46,20 +46,22 @@ def make_ordinal(n):
 	return str(n) + suffix
 
 
-def parse_flag(stnd: dict):
+countryShort = {}
+with open("country short.tsv", 'r', encoding='utf-8') as f:
+	for line in f:
+		(key, value) = line.split("\t")
+		countryShort[key.strip()] = value.strip()
+
+
+def get_flag(stnd: dict):
 	c = ""
-	shorthand = {
-		"United States": "USA",
-		"United Kingdom": "UK",
-		"United Arab Emirates": "UAE"
-	}
 	if stnd['player']['user'] is not None:
 		if stnd['player']['user']['location'] is not None:
 			if stnd['player']['user']['location']['country'] is not None:
 				c = stnd['player']['user']['location']['country']
 
-	if c in shorthand:
-		c = shorthand[c]
+	if c in countryShort:
+		c = countryShort[c]
 	return c
 
 

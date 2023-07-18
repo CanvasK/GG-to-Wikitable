@@ -216,7 +216,7 @@ if rosterSize == 1:
 		playerID = row['entrant']['id']
 
 		smasherName = row['entrant']['name'].split("|")[-1].strip()
-		country = helper.parse_flag(row)
+		country = helper.get_flag(row)
 		smasherString = helper.smasher_link(smasherName, country, row['placement'] <= maxLink)
 		placement = helper.make_ordinal(row['placement'])
 		charHeads = ""
@@ -284,18 +284,18 @@ elif rosterSize == 2:
 
 		for i in range(2):
 			sName = teamMembers[i]['participant']['gamerTag'].split("|")[-1].strip()
-			sCountry = helper.parse_flag(teamMembers[i]['participant'])
+			sCountry = helper.get_flag(teamMembers[i]['participant'])
 			sString = helper.smasher_link(sName, sCountry, row['placement'] <= maxLink)
 
 			smasherStrings.append(sString)
 		# # Teammate 1
 		# smasherName1 = teamMembers[0]['participant']['gamerTag'].split("|")[-1].strip()
-		# country1 = parse_flag(teamMembers[0]['participant'])
+		# country1 = get_flag(teamMembers[0]['participant'])
 		# smasherString1 = smasher_link(smasherName1, country1, row['placement'] <= maxLink)
 		#
 		# # Teammate 2
 		# smasherName2 = teamMembers[1]['participant']['gamerTag'].split("|")[-1].strip()
-		# country2 = parse_flag(teamMembers[1]['participant'])
+		# country2 = get_flag(teamMembers[1]['participant'])
 		# smasherString2 = smasher_link(smasherName2, country2, row['placement'] <= maxLink)
 
 		# Append to table
