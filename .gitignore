@@ -5,3 +5,4 @@ others/
 old/
 __pycache__/
 .idea/
+git update-index --skip-worktree config.cfg
