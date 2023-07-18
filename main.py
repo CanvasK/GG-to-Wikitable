@@ -9,8 +9,17 @@ print(time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()))
 config = configparser.ConfigParser()
 config.read('config.cfg')
 
-with open("auth.txt") as a:
-	authToken = a.read().strip()
+try:
+	with open("auth.txt") as a:
+		authToken = a.read().strip()
+		if len(authToken) == 0:
+			print("auth.txt is empty. Please paste your authentication token into the file and save")
+			time.sleep(20)
+			exit()
+except FileNotFoundError:
+	print("auth.txt does not exist. Please create the file in the same folder as main.py with an authentication token")
+	time.sleep(20)
+	exit()
 
 slugURL = config['request']['EventSlug']
 if "start.gg" in slugURL:
