@@ -1,0 +1,6 @@
+auth.txt
+output.txt
+lists/
+others/
+__pycache__/
+.idea/
