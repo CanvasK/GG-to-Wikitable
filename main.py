@@ -4,6 +4,8 @@ import re
 import configparser
 import time
 
+from helper import dq_judge
+
 print(time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()))
 
 config = configparser.ConfigParser()
@@ -242,49 +244,21 @@ if rosterSize == 1:
 
 		# DQ stuff
 		setList = row['entrant']['paginatedSets']['nodes']
-		dqSets = []
-		dqLatest = None
 
-		for sL in setList:
-			# If the resulting score is a DQ and the winner is not the target player
-			# API does not say who received the DQ score, so a winner check is needed
-			if sL['displayScore'] == "DQ" and sL['winnerId'] != entrantID:
-				# Originally stored the round number,
-				# but the only thing that matters is - and +,
-				# not the actual value (- for losers, + for winners)
-				if sL['round'] < 0:
-					dqSets.append(-1)
-				else:
-					dqSets.append(1)
+		dqJudgement, dqSets = helper.dq_judge(entrantID, setList, maxDq)
 
-				# Sets are ordered with most recent set played first
-				# Only note the most recent DQ and ignore the rest
-				if dqLatest is None:
-					if sL['round'] < 0:
-						dqLatest = "losers"
-					else:
-						dqLatest = "winners"
-			else:
-				# Round number should never be 0, can be used as a null value instead
-				dqSets.append(0)
-
-		# If the player gets too many DQs, they are considered to have a full DQ
-		if ((len(dqSets) - maxDq) == dqSets.count(0)) or dqSets.count(0) == 0:
+		if dqJudgement == "pass":
+			pass
+		elif dqJudgement == "full":
 			smasherString += " (DQ)"
-
-		# Mark placement with an asterisk if they received a DQ
-		# Keep track of when a "losers DQ" or "winners DQ" happens
-		elif dqLatest is not None:
-			if dqLatest == "losers":
-				if dqLatest not in dqOrder:
-					dqOrder.append(dqLatest)
-			if dqLatest == "winners":
-				if dqLatest not in dqOrder:
-					dqOrder.append(dqLatest)
-
-			# If the player is already listed as a full DQ, ignore
-			if not smasherString.endswith(" (DQ)"):
-				placement += "*" * (dqOrder.index(dqLatest) + 1)
+		else:
+			if dqJudgement == "losers":
+				if dqJudgement not in dqOrder:
+					dqOrder.append(dqJudgement)
+			if dqJudgement == "winners":
+				if dqJudgement not in dqOrder:
+					dqOrder.append(dqJudgement)
+			placement += "*" * (dqOrder.index(dqJudgement) + 1)
 
 		# If the sets played are nothing but DQs, list characters as a dash
 		if dqSets.count(0) == 0:
@@ -321,50 +295,26 @@ elif rosterSize == 2:
 
 		# DQ stuff
 		setList = row['entrant']['paginatedSets']['nodes']
-		dqSets = []
-		dqLatest = None
+		dqJudgement, dqSets = helper.dq_judge(entrantID, setList, maxDq)
 
-		for sL in setList:
-			# If the resulting score is a DQ and the winner is not the target player
-			# API does not say who received the DQ score, so a winner check is needed
-			if sL['displayScore'] == "DQ" and sL['winnerId'] != entrantID:
-				# Originally stored the round number,
-				# but the only thing that matters is - and +,
-				# not the actual value (- for losers, + for winners)
-				if sL['round'] < 0:
-					dqSets.append(-1)
-				else:
-					dqSets.append(1)
-
-				# Sets are ordered with most recent set played first
-				# Only note the most recent DQ and ignore the rest
-				if dqLatest is None:
-					if sL['round'] < 0:
-						dqLatest = "losers"
-					else:
-						dqLatest = "winners"
-			else:
-				# Round number should never be 0, can be used as a null value instead
-				dqSets.append(0)
-
-		if ((len(dqSets) - maxDq) == dqSets.count(0)) or dqSets.count(0) == 0:
-			for i in range(2):
+		if dqJudgement == "pass":
+			pass
+		elif dqJudgement == "full":
+			for i in range(len(smasherStrings)):
 				smasherStrings[i] += " (DQ)"
+		else:
+			if dqJudgement == "losers":
+				if dqJudgement not in dqOrder:
+					dqOrder.append(dqJudgement)
+			if dqJudgement == "winners":
+				if dqJudgement not in dqOrder:
+					dqOrder.append(dqJudgement)
+			placement += "*" * (dqOrder.index(dqJudgement) + 1)
 
-		elif dqLatest is not None:
-			if dqLatest == "losers":
-				if dqLatest not in dqOrder:
-					dqOrder.append(dqLatest)
-			if dqLatest == "winners":
-				if dqLatest not in dqOrder:
-					dqOrder.append(dqLatest)
-
-			# If the player is already listed as a full DQ, ignore
-			if not smasherStrings[0].endswith(" (DQ)"):
-				placement += "*" * (dqOrder.index(dqLatest) + 1)
-
+		# If the sets played are nothing but DQs, list characters as a dash
 		if dqSets.count(0) == 0:
 			charHeads = "&mdash;"
+
 		# Append to table
 		tableString += rowString.format(place=placement,
 										p1=smasherStrings[0],

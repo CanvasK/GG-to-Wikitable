@@ -1,3 +1,4 @@
+import math
 import urllib.request
 import urllib.parse
 import urllib.error
@@ -99,3 +100,37 @@ def event_data_slug(slug, page, query, headers):
 		return data
 	except KeyError:
 		print(response)
+
+
+def dq_judge(e_id, sets: dict, max_dq):
+	_dqSets = []
+	_dqLatest = None
+	_judgement = "pass"
+	for s in sets:
+		# If the resulting score is a DQ and the winner is not the target player.
+		# API does not say who received the DQ score, so a winner check is needed
+		if s['displayScore'] == "DQ" and s['winnerId'] != e_id:
+			# The specific round doesn't matter, only -/+
+			# - = losers, + = winners
+			_dqSets.append(math.copysign(1, s['round']))
+
+			# Sets are ordered with the first index being the last set
+			# Only most recent, therefore lowest index, is necessary
+			if _dqLatest is None:
+				_dqLatest = math.copysign(1, s['round'])
+		else:
+			# Round number should never be 0, can be used as a null value instead
+			_dqSets.append(0)
+
+	# if ((len(_dqSets) - max_dq) >= _dqSets.count(0)) or _dqSets.count(0) == 0:
+	if (len(_dqSets) - _dqSets.count(0) >= max_dq) or _dqSets.count(0) == 0:
+		_judgement = "full"
+	else:
+		if _dqLatest == -1:
+			_judgement = "losers"
+		elif _dqLatest == 1:
+			_judgement = "winners"
+		else:
+			_judgement = "pass"
+
+	return _judgement, _dqSets
