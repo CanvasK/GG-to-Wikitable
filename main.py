@@ -95,10 +95,11 @@ query ($eventSlug: String!, $page: Int!){
 queryDoubles = """
 query ($eventSlug: String!, $page: Int!){
 	event(slug: $eventSlug) {
-		standings(query: {page: $page, perPage: 50}) {
+		standings(query: {page: $page, perPage: 40}) {
 			nodes {
 				placement
 				entrant {
+					id
 					name
 					team {
 						name
@@ -108,6 +109,13 @@ query ($eventSlug: String!, $page: Int!){
 								gamerTag
 								player { user { location {country} } }
 							}
+						}
+					}
+					paginatedSets(page: 1, perPage: 50, sortType: RECENT) {
+						nodes {
+							displayScore
+							winnerId
+							round
 						}
 					}
 				}
@@ -155,7 +163,7 @@ gameID = eventData['videogame']['id']
 if eventType == "singles":
 	totalPages = math.ceil(eventData['numEntrants'] / 50)
 elif eventType == "doubles":
-	totalPages = math.ceil(eventData['numEntrants'] / 50)
+	totalPages = math.ceil(eventData['numEntrants'] / 40)
 else:
 	print("Invalid type")
 	totalPages = math.ceil(eventData['numEntrants'] / 50)
@@ -222,55 +230,64 @@ if rosterSize == 1:
 	tableString = """{|class="wikitable" style="text-align:center"\n!Place!!Name!!Character(s)!!Earnings\n"""
 	rowString = """|-\n|{place}||{p1}||{heads}||\n"""
 	for row in standingsList:
-		playerID = row['entrant']['id']
+		placement = helper.make_ordinal(row['placement'])
+
+		entrantID = row['entrant']['id']
 
 		smasherName = row['entrant']['name'].split("|")[-1].strip()
 		country = helper.get_flag(row)
 		smasherString = helper.smasher_link(smasherName, country, row['placement'] <= maxLink)
 
-		placement = helper.make_ordinal(row['placement'])
 		charHeads = ""
 
 		# DQ stuff
 		setList = row['entrant']['paginatedSets']['nodes']
 		dqSets = []
-		dqBracket = None
+		dqLatest = None
+
 		for sL in setList:
 			# If the resulting score is a DQ and the winner is not the target player
 			# API does not say who received the DQ score, so a winner check is needed
-			if sL['displayScore'] == "DQ" and sL['winnerId'] != playerID:
-				dqSets.append(sL['round'])
+			if sL['displayScore'] == "DQ" and sL['winnerId'] != entrantID:
+				# Originally stored the round number,
+				# but the only thing that matters is - and +,
+				# not the actual value (- for losers, + for winners)
+				if sL['round'] < 0:
+					dqSets.append(-1)
+				else:
+					dqSets.append(1)
 
 				# Sets are ordered with most recent set played first
 				# Only note the most recent DQ and ignore the rest
-				if dqBracket is None:
+				if dqLatest is None:
 					if sL['round'] < 0:
-						dqBracket = "losers"
+						dqLatest = "losers"
 					else:
-						dqBracket = "winners"
+						dqLatest = "winners"
 			else:
-				dqSets.append(None)
+				# Round number should never be 0, can be used as a null value instead
+				dqSets.append(0)
 
 		# If the player gets too many DQs, they are considered to have a full DQ
-		if len(dqSets) - maxDq == dqSets.count(None):
+		if ((len(dqSets) - maxDq) == dqSets.count(0)) or dqSets.count(0) == 0:
 			smasherString += " (DQ)"
 
 		# Mark placement with an asterisk if they received a DQ
 		# Keep track of when a "losers DQ" or "winners DQ" happens
-		if dqBracket is not None:
-			if dqBracket == "losers":
-				if dqBracket not in dqOrder:
-					dqOrder.append(dqBracket)
-			if dqBracket == "winners":
-				if dqBracket not in dqOrder:
-					dqOrder.append(dqBracket)
+		elif dqLatest is not None:
+			if dqLatest == "losers":
+				if dqLatest not in dqOrder:
+					dqOrder.append(dqLatest)
+			if dqLatest == "winners":
+				if dqLatest not in dqOrder:
+					dqOrder.append(dqLatest)
 
 			# If the player is already listed as a full DQ, ignore
 			if not smasherString.endswith(" (DQ)"):
-				placement += "*" * (dqOrder.index(dqBracket) + 1)
+				placement += "*" * (dqOrder.index(dqLatest) + 1)
 
 		# If the sets played are nothing but DQs, list characters as a dash
-		if dqSets.count(None) == 0:
+		if dqSets.count(0) == 0:
 			charHeads = "&mdash;"
 
 		# Append to table
@@ -281,19 +298,19 @@ if rosterSize == 1:
 	tableString = tableString.replace("||||", "|| ||")
 
 	tableString += "|}"
-	# Add asterisk notes to the end of the table
-	if len(dqOrder) > 0:
-		tableString += "\n"
-		for d in dqOrder:
-			tableString += "{{*}}" * (dqOrder.index(d) + 1) + "DQ'd in " + d.capitalize() + ".\n"
 
 # Team size = 2 || DOUBLES
 elif rosterSize == 2:
 	tableString = """{|class="wikitable" style="text-align:center"\n!Place!!Name!!Character(s)!!Name!!Character(s)!!Earnings\n"""
-	rowString = """|-\n|{place}||{p1}|| ||{p2}|| ||\n"""
+	rowString = """|-\n|{place}||{p1}||{h1}||{p2}||{h2}||\n"""
 	for row in standingsList:
+		placement = helper.make_ordinal(row['placement'])
+
+		entrantID = row['entrant']['id']
+
 		teamMembers = row['entrant']['team']['members']
 		smasherStrings = []
+		charHeads = ""
 
 		for i in range(2):
 			sName = teamMembers[i]['participant']['gamerTag'].split("|")[-1].strip()
@@ -301,27 +318,73 @@ elif rosterSize == 2:
 			sString = helper.smasher_link(sName, sCountry, row['placement'] <= maxLink)
 
 			smasherStrings.append(sString)
-		# # Teammate 1
-		# smasherName1 = teamMembers[0]['participant']['gamerTag'].split("|")[-1].strip()
-		# country1 = get_flag(teamMembers[0]['participant'])
-		# smasherString1 = smasher_link(smasherName1, country1, row['placement'] <= maxLink)
-		#
-		# # Teammate 2
-		# smasherName2 = teamMembers[1]['participant']['gamerTag'].split("|")[-1].strip()
-		# country2 = get_flag(teamMembers[1]['participant'])
-		# smasherString2 = smasher_link(smasherName2, country2, row['placement'] <= maxLink)
 
+		# DQ stuff
+		setList = row['entrant']['paginatedSets']['nodes']
+		dqSets = []
+		dqLatest = None
+
+		for sL in setList:
+			# If the resulting score is a DQ and the winner is not the target player
+			# API does not say who received the DQ score, so a winner check is needed
+			if sL['displayScore'] == "DQ" and sL['winnerId'] != entrantID:
+				# Originally stored the round number,
+				# but the only thing that matters is - and +,
+				# not the actual value (- for losers, + for winners)
+				if sL['round'] < 0:
+					dqSets.append(-1)
+				else:
+					dqSets.append(1)
+
+				# Sets are ordered with most recent set played first
+				# Only note the most recent DQ and ignore the rest
+				if dqLatest is None:
+					if sL['round'] < 0:
+						dqLatest = "losers"
+					else:
+						dqLatest = "winners"
+			else:
+				# Round number should never be 0, can be used as a null value instead
+				dqSets.append(0)
+
+		if ((len(dqSets) - maxDq) == dqSets.count(0)) or dqSets.count(0) == 0:
+			for i in range(2):
+				smasherStrings[i] += " (DQ)"
+
+		elif dqLatest is not None:
+			if dqLatest == "losers":
+				if dqLatest not in dqOrder:
+					dqOrder.append(dqLatest)
+			if dqLatest == "winners":
+				if dqLatest not in dqOrder:
+					dqOrder.append(dqLatest)
+
+			# If the player is already listed as a full DQ, ignore
+			if not smasherStrings[0].endswith(" (DQ)"):
+				placement += "*" * (dqOrder.index(dqLatest) + 1)
+
+		if dqSets.count(0) == 0:
+			charHeads = "&mdash;"
 		# Append to table
-		tableString += rowString.format(place=helper.make_ordinal(row['placement']),
+		tableString += rowString.format(place=placement,
 										p1=smasherStrings[0],
-										p2=smasherStrings[1])
+										p2=smasherStrings[1],
+										h1=charHeads, h2=charHeads)
 
-	tableString = tableString.replace("||||", "|| ||") + "|}\n"
+	tableString = tableString.replace("||||", "|| ||")
+
+	tableString += "|}"
 
 else:
 	print("FORMAT NOT SUPPORTED")
 	time.sleep(config.getint('other', 'EndPause'))
 	exit()
+
+# Add asterisk notes to the end of the table
+if len(dqOrder) > 0:
+	tableString += "\n"
+	for d in dqOrder:
+		tableString += "{{*}}" * (dqOrder.index(d) + 1) + "DQ'd in " + d.capitalize() + ".\n"
 
 # ===================================== Output =====================================
 print("="*10 + " Table complete ")
@@ -334,8 +397,11 @@ with open("output.txt", "w+", encoding='utf-8') as f:
 	# Header
 	f.write(headerString.format(gameByID[gameID][0], eventType))
 	# Entrants
-	f.write("({0:,} entrants)<br>\n".format(eventData['numEntrants']))
-	# Bracket(s)
+	if eventType == "singles":
+		f.write("({0:,} entrants)<br>\n".format(eventData['numEntrants']))
+	if eventType == "doubles":
+		f.write("({0:,} teams)<br>\n".format(eventData['numEntrants']))
+# Bracket(s)
 	for i in range(len(phaseBrackets)):
 		# The last bracket does not get a <br>
 		if i != len(phaseBrackets) - 1:
