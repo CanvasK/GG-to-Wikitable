@@ -6,7 +6,12 @@ import json
 import time
 
 
-def gg_query(query, variables, headers):
+def gg_query(query, variables, headers, json_err=0):
+	if json_err >= 5:
+		print("The start.gg servers aren't sending valid JSON after several attempts. Try a different query or wait a few minutes.")
+		time.sleep(30)
+		exit()
+
 	json_request = {'query': query, 'variables': variables}
 	req = urllib.request.Request('https://api.smash.gg/gql/alpha', data=json.dumps(json_request).encode('utf-8'), headers=headers)
 	try:
@@ -26,7 +31,13 @@ def gg_query(query, variables, headers):
 				time.sleep(20)
 				response = urllib.request.urlopen(req)
 
-	return json.loads(response.read())
+	try:
+		return json.loads(response.read())
+	except json.decoder.JSONDecodeError as e:
+		print("Received invalid JSON from server. Trying again in a bit.")
+		print(e)
+		time.sleep(1*(json_err+1))
+		return gg_query(query, variables, headers, json_err=json_err+1)
 
 
 def make_ordinal(n):
@@ -89,12 +100,7 @@ def smasher_link(name, flag="", link=True):
 
 def event_data_slug(slug, page, query, headers):
 	variables = {"eventSlug": slug, "page": page}
-	try:
-		response = gg_query(query, variables, headers)
-	except json.decoder.JSONDecodeError as e:
-		print(e)
-		time.sleep(0.8)
-		response = gg_query(query, variables, headers)
+	response = gg_query(query, variables, headers)
 	try:
 		data = response['data']['event']
 		return data
