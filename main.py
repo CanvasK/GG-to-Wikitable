@@ -4,8 +4,6 @@ import re
 import configparser
 import time
 
-from helper import dq_judge
-
 print(time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()))
 
 config = configparser.ConfigParser()
