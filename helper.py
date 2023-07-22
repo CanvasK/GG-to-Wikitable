@@ -31,8 +31,11 @@ def gg_query(query, variables, headers, json_err=0):
 				time.sleep(20)
 				response = urllib.request.urlopen(req)
 
+	res = response.read()
+	response.close()
+
 	try:
-		return json.loads(response.read())
+		return json.loads(res)
 	except json.decoder.JSONDecodeError as e:
 		print("Received invalid JSON from server. Trying again in a bit.")
 		print(e)
