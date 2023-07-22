@@ -1,4 +1,5 @@
 import helper
+import os
 import math
 import re
 import configparser
@@ -340,11 +341,16 @@ if len(dqOrder) > 0:
 # ===================================== Output =====================================
 print("="*10 + " Table complete ")
 print(time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()))
-print("="*10 + " Writing to output.txt ")
+
+outputPath = os.path.join("outputs", slugURL)
+if not os.path.exists(outputPath):
+	os.makedirs(outputPath)
+
+print("="*10 + " Writing to \"" + outputPath.replace("/", "\\") + "\\output.txt\" ")
 
 headerString = "===''[[{0}]]'' {1}===\n"
 
-with open("output.txt", "w+", encoding='utf-8') as f:
+with open(os.path.join(outputPath, "output.txt"), "w+", encoding='utf-8') as f:
 	# Header
 	f.write(headerString.format(gameByID[gameID][0], eventType))
 	# Entrants
