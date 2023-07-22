@@ -1,0 +1,2 @@
+# List the event's slug followed by the type of event (supported types: singles, doubles) separated by a comma
+# Example: tournament/evo-2018/event/evo-2018-1, singles
