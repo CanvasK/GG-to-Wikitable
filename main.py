@@ -154,9 +154,9 @@ print("="*10 + " Starting queries")
 eventData = helper.event_data_slug(slugURL, 1, queryOnceData, header)
 phaseData = eventData['phases']
 phaseBrackets = []
-for p in phaseData:
-	if p['groupCount'] == 1:
-		phaseBrackets.append("[{0} {1}]".format(p['phaseGroups']['nodes'][0]['bracketUrl'], p['name']))
+for phase in phaseData:
+	if phase['groupCount'] == 1:
+		phaseBrackets.append("[{0} {1}]".format(phase['phaseGroups']['nodes'][0]['bracketUrl'], phase['name']))
 
 # Get game ID
 gameID = eventData['videogame']['id']
@@ -180,7 +180,7 @@ print(eventData['name'])
 print("https://www.start.gg/" + eventData['slug'])
 print("game:", gameByID[eventData['videogame']['id']][0])
 print("entrants:", eventData['numEntrants'])
-print("pages:", totalPages)
+# print("pages:", totalPages)
 print("roster size:", rosterSize)
 print(time.strftime("%Y-%m-%d %H:%M:%S+00:00 (UTC)", time.gmtime(int(eventData['startAt']))))
 print("online:", eventData['isOnline'])
@@ -188,15 +188,22 @@ print("prize info:", eventData['prizingInfo'])
 print()
 
 standingsList = list()
+pageCount = 1
 
+queryStartTime = time.time()
+queryEndTime = time.time()
+
+decreasingSleep = helper.Sleeper(start_time=time.time(), end_time=time.time())
 # Loop through pages until limit is reached
-for p in range(1, totalPages+1):
-	eventStandingData = helper.event_data_slug(slugURL, p, targetQuery, header)
+while True:
+	queryStartTime = time.time()
+
+	eventStandingData = helper.event_data_slug(slugURL, pageCount, targetQuery, header)
 	eventStandingListTemp = eventStandingData['standings']['nodes']
 
 	# If the returned page is empty, then there are no more pages to go through
 	if len(eventStandingListTemp) == 0:
-		print("\nNo more pages:", p)
+		print("\nNo more pages:", pageCount)
 		break
 
 	standingsList.extend(eventStandingListTemp)
@@ -204,15 +211,19 @@ for p in range(1, totalPages+1):
 	# Only placements up to a point are documented. Stop if too many
 	if maxPlace > 0:
 		if eventStandingListTemp[-1]['placement'] > maxPlace:
-			print("\npages:", p)
+			print("\npages:", pageCount)
 			break
 
-	if (maxPages > 0) and (maxPages == p):
+	if (maxPages > 0) and (maxPages == pageCount):
 		print("\nMax pages reached")
 		break
 
-	print("\rCurrent page: " + str(p), end='', flush=True)
-	time.sleep(60/80)  # Limit for calls is 80 per 60 seconds
+	queryEndTime = time.time()
+	print("\rCurrent page: {c: <4} ({t} seconds) [entrants: {e: <7,}/{ec: <7,}]".format(c=pageCount, t=queryEndTime - queryStartTime,
+																			e=len(standingsList), ec=eventData['numEntrants']),
+		  end='', flush=True)
+	pageCount += 1
+	decreasingSleep.sleep(end_time=time.time())
 
 # ===================================== Tables =====================================
 print()
