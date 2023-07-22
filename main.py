@@ -160,14 +160,6 @@ for phase in phaseData:
 
 # Get game ID
 gameID = eventData['videogame']['id']
-if eventType == "singles":
-	totalPages = math.ceil(eventData['numEntrants'] / 50)
-elif eventType == "doubles":
-	totalPages = math.ceil(eventData['numEntrants'] / 40)
-else:
-	print("Invalid type")
-	totalPages = math.ceil(eventData['numEntrants'] / 50)
-	exit()
 
 # Get size of teams
 if eventData['teamRosterSize'] is not None:
