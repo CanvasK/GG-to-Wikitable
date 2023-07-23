@@ -34,7 +34,7 @@ gameByID = {1:     ['Super Smash Bros. Melee', 'SSBM'],
 			29:    ['Super Smash Bros. for Nintendo 3DS', 'SSB4'],
 			1386:  ['Super Smash Bros. Ultimate', 'SSBU'],
 			33602: ['Project+', 'P+'],
-			39478: ['Smash Remix', 'Remix']}
+			39478: ['Smash Remix', 'SR']}
 
 
 queryOnceData = """
