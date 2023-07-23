@@ -187,7 +187,9 @@ class Sleeper:
 		# start.gg limits requests to 80 per 60 seconds, or about 0.75 seconds per request
 		# Sleep is soft capped at 0.8 to allow for some buffer
 		# If 0.8 is exceeded, sleep duration is slowly increased to get back in line
-		if self.avg_time >= 1.0:
+		if self.avg_time >= 2.0:
+			self.sleep_time = max(0.0, self.sleep_time - 0.1)
+		elif self.avg_time >= 1.0:
 			self.sleep_time = max(0.0, self.sleep_time - 0.02)
 		elif self.avg_time > 0.8:
 			self.sleep_time = max(0.0, self.sleep_time - 0.01)
