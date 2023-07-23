@@ -170,7 +170,7 @@ class Sleeper:
 		self.delta_time = min(5, self.end_time - self.start_time)
 		self.start_time = time.time()
 		self.list_times.append(self.delta_time)
-		self.list_times = self.list_times[-5:]
+		del self.list_times[:-5]
 		self.avg_time = sum(self.list_times)/len(self.list_times)
 
 		# start.gg limits requests to 80 per 60 seconds, or about 0.75 seconds per request
