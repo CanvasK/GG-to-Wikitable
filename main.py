@@ -1,5 +1,4 @@
 import helper
-import math
 import re
 import configparser
 import time
@@ -21,9 +20,13 @@ except FileNotFoundError:
 	time.sleep(20)
 	exit()
 
-slugURL = config['request']['EventSlug']
+slugURL = config['request']['EventSlug'].strip()
 if "start.gg" in slugURL:
-	slugURL = re.findall(r"start\.gg/(.*)", slugURL)[0]
+	slugURL = re.findall(r"start\.gg/(.*)", slugURL)[0].strip()
+
+slugURL = slugURL.replace("/events/", "/event/")
+slugURL = slugURL.split("/", 4)[0:4]
+slugURL = "/".join(slugURL)
 
 header = {"Authorization": "Bearer " + authToken, "Content-Type": "application/json"}
 
