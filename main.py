@@ -21,6 +21,12 @@ except FileNotFoundError:
 	exit()
 
 slugURL = config['request']['EventSlug'].strip()
+
+if len(slugURL) == 0:
+	print("EventSlug is empty. Make sure you are using the correct Mode in the config or add an event to EventSlug")
+	time.sleep(20)
+	exit()
+
 if "start.gg" in slugURL:
 	slugURL = re.findall(r"start\.gg/(.*)", slugURL)[0].strip()
 
