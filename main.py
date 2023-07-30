@@ -146,7 +146,11 @@ if operationMode == "single":
 		exit()
 
 	if "start.gg" in slugURL:
-		slugURL = re.findall(r"start\.gg/(.*)", slugURL)[0]
+		slugURL = re.findall(r"start\.gg/(.*)", slugURL)[0].strip()
+
+	slugURL = slugURL.replace("/events/", "/event/")
+	slugURL = slugURL.split("/", 4)[0:4]
+	slugURL = "/".join(slugURL)
 
 	eventType = config.get('request', 'EventType').lower()
 	targets.append({"slug": slugURL, "type": eventType})
