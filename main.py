@@ -1,6 +1,5 @@
 import helper
 import os
-import re
 import configparser
 import time
 
@@ -21,8 +20,6 @@ except FileNotFoundError:
 	time.sleep(20)
 	exit()
 
-
-header = {"Authorization": "Bearer " + authToken, "Content-Type": "application/json"}
 
 gameByID = {1:     ['Super Smash Bros. Melee', 'SSBM'],
 			2:     ['Project M', 'PM'],
@@ -140,17 +137,12 @@ targets = []
 
 if operationMode == "single":
 	slugURL = config.get('request', 'EventSlug').strip()
-	if len(slugURL) == 0:
+	try:
+		slugURL = helper.gg_slug_cleaner(slugURL)
+	except helper.SlugMissingError as e:
 		print("EventSlug is empty. Make sure you are using the correct Mode in the config or add an event to EventSlug")
 		time.sleep(20)
 		exit()
-
-	if "start.gg" in slugURL:
-		slugURL = re.findall(r"start\.gg/(.*)", slugURL)[0].strip()
-
-	slugURL = slugURL.replace("/events/", "/event/")
-	slugURL = slugURL.split("/", 4)[0:4]
-	slugURL = "/".join(slugURL)
 
 	eventType = config.get('request', 'EventType').lower()
 	targets.append({"slug": slugURL, "type": eventType})
@@ -161,6 +153,14 @@ elif operationMode == "bulk":
 			if not line.startswith("#"):
 				if len(line) > 0:
 					spl = line.split(",")
+					_slug = spl[0].strip()
+					_type = spl[1].strip()
+					try:
+						_slug = helper.gg_slug_cleaner(_slug)
+					except helper.SlugMissingError as e:
+						print("Slug field is empty. Make sure there is a slug at the beginning of the line in bulk.txt")
+						time.sleep(20)
+						exit()
 					targets.append({"slug": spl[0].strip(), "type": spl[1].strip()})
 	if len(targets) == 0:
 		print("bulk.txt is empty. Make sure you are using the correct Mode in the config or add events to bulk.txt")
@@ -185,7 +185,7 @@ for tar in targets:
 		exit()
 
 	# Data about the event that doesn't change
-	eventData = helper.event_data_slug(tar['slug'], 1, queryOnceData, header)
+	eventData = helper.event_data_slug(tar['slug'], 1, queryOnceData, authToken)
 	phaseData = eventData['phases']
 	phaseBrackets = []
 	for phase in phaseData:
@@ -224,7 +224,7 @@ for tar in targets:
 	while True:
 		queryStartTime = time.time()
 
-		eventStandingData = helper.event_data_slug(tar['slug'], pageCount, targetQuery, header)
+		eventStandingData = helper.event_data_slug(tar['slug'], pageCount, targetQuery, authToken)
 		eventStandingListTemp = eventStandingData['standings']['nodes']
 
 		# If the returned page is empty, then there are no more pages to go through

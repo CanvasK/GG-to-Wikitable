@@ -4,16 +4,32 @@ import urllib.parse
 import urllib.error
 import json
 import time
+import re
 
 
-def gg_query(query, variables, headers, json_err=0):
+# Query related stuff
+def gg_query(query, variables, auth, json_err=0):
+	"""
+
+	:type query: str
+	:param query: The query for the start.gg API
+	:type variables: dict
+	:param variables: The changeable settings for the API such as page number, items per page, etc.
+	:type auth: str
+	:param auth: The user's start.gg authorization code
+	:param json_err: DO NOT USE. Used for error handling
+	:return:
+	:rtype: dict
+	"""
+	header = {"Authorization": "Bearer " + auth, "Content-Type": "application/json"}
+
 	if json_err >= 5:
 		print("The start.gg servers aren't sending valid JSON after several attempts. Try a different query or wait a few minutes.")
 		time.sleep(30)
 		exit()
 
 	json_request = {'query': query, 'variables': variables}
-	req = urllib.request.Request('https://api.smash.gg/gql/alpha', data=json.dumps(json_request).encode('utf-8'), headers=headers)
+	req = urllib.request.Request('https://api.smash.gg/gql/alpha', data=json.dumps(json_request).encode('utf-8'), headers=header)
 	try:
 		response = urllib.request.urlopen(req)
 		if response.getcode() == 200:
@@ -51,9 +67,47 @@ def gg_query(query, variables, headers, json_err=0):
 		print("Received invalid JSON from server. Trying again in a bit.")
 		print(e)
 		time.sleep(1*(json_err+1))
-		return gg_query(query, variables, headers, json_err=json_err+1)
+		return gg_query(query=query, variables=variables, auth=auth, json_err=json_err+1)
 
 
+def event_data_slug(slug, page, query, auth):
+	variables = {"eventSlug": slug, "page": page}
+	response = gg_query(query=query, variables=variables, auth=auth)
+	try:
+		data = response['data']['event']
+		return data
+	except KeyError:
+		print(response)
+
+
+# Slug related stuff
+class SlugMissingError(Exception):
+	# slug is missing error
+	pass
+
+
+def gg_slug_cleaner(slug):
+	if len(slug) == 0:
+		raise SlugMissingError
+
+	# Slug shouldn't contain the domain
+	if "start.gg" in slug:
+		slug = re.findall(r"start\.gg/(.*)", slug)[0].strip()
+
+	# API does not consider "events == event" despite it working in browser
+	slug = slug.replace("/events/", "/event/")
+	# Remove stuff at the end
+	# Slug should only be "tournament/T/event/E" at most
+	if "/event/" in slug:
+		slug = slug.split("/", 4)[0:4]
+	else:
+		slug = slug.split("/", 4)[0:2]
+	slug = "/".join(slug)
+
+	return slug
+
+
+# Helper functions
 def make_ordinal(n):
 	"""
 	Convert an integer into its ordinal representation::
@@ -110,16 +164,6 @@ def smasher_link(name, flag="", link=True):
 			sm_str = name
 
 	return sm_str
-
-
-def event_data_slug(slug, page, query, headers):
-	variables = {"eventSlug": slug, "page": page}
-	response = gg_query(query, variables, headers)
-	try:
-		data = response['data']['event']
-		return data
-	except KeyError:
-		print(response)
 
 
 def dq_judge(e_id, sets: dict, max_dq):
