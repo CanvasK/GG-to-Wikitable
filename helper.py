@@ -6,14 +6,28 @@ import json
 import time
 
 
-def gg_query(query, variables, headers, json_err=0):
+def gg_query(query, variables, auth, json_err=0):
+	"""
+
+	:type query: str
+	:param query: The query for the start.gg API
+	:type variables: dict
+	:param variables: The changeable settings for the API such as page number, items per page, etc.
+	:type auth: str
+	:param auth: The user's start.gg authorization code
+	:param json_err: DO NOT USE. Used for error handling
+	:return:
+	:rtype: dict
+	"""
+	header = {"Authorization": "Bearer " + auth, "Content-Type": "application/json"}
+
 	if json_err >= 5:
 		print("The start.gg servers aren't sending valid JSON after several attempts. Try a different query or wait a few minutes.")
 		time.sleep(30)
 		exit()
 
 	json_request = {'query': query, 'variables': variables}
-	req = urllib.request.Request('https://api.smash.gg/gql/alpha', data=json.dumps(json_request).encode('utf-8'), headers=headers)
+	req = urllib.request.Request('https://api.smash.gg/gql/alpha', data=json.dumps(json_request).encode('utf-8'), headers=header)
 	try:
 		response = urllib.request.urlopen(req)
 		if response.getcode() == 200:
@@ -51,7 +65,7 @@ def gg_query(query, variables, headers, json_err=0):
 		print("Received invalid JSON from server. Trying again in a bit.")
 		print(e)
 		time.sleep(1*(json_err+1))
-		return gg_query(query, variables, headers, json_err=json_err+1)
+		return gg_query(query=query, variables=variables, auth=auth, json_err=json_err+1)
 
 
 def make_ordinal(n):
@@ -112,9 +126,9 @@ def smasher_link(name, flag="", link=True):
 	return sm_str
 
 
-def event_data_slug(slug, page, query, headers):
+def event_data_slug(slug, page, query, auth):
 	variables = {"eventSlug": slug, "page": page}
-	response = gg_query(query, variables, headers)
+	response = gg_query(query=query, variables=variables, auth=auth)
 	try:
 		data = response['data']['event']
 		return data

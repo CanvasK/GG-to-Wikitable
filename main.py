@@ -34,8 +34,6 @@ slugURL = slugURL.replace("/events/", "/event/")
 slugURL = slugURL.split("/", 4)[0:4]
 slugURL = "/".join(slugURL)
 
-header = {"Authorization": "Bearer " + authToken, "Content-Type": "application/json"}
-
 gameByID = {1:     ['Super Smash Bros. Melee', 'SSBM'],
 			2:     ['Project M', 'PM'],
 			3:     ['Super Smash Bros. for Wii U', 'SSB4'],
@@ -160,7 +158,7 @@ print("="*10 + " Starting queries")
 
 
 # Data about the event that doesn't change
-eventData = helper.event_data_slug(slugURL, 1, queryOnceData, header)
+eventData = helper.event_data_slug(slug=slugURL, page=1, query=queryOnceData, auth=authToken)
 phaseData = eventData['phases']
 phaseBrackets = []
 for phase in phaseData:
@@ -199,7 +197,7 @@ decreasingSleep = helper.Sleeper(start_time=time.time(), end_time=time.time())
 while True:
 	queryStartTime = time.time()
 
-	eventStandingData = helper.event_data_slug(slugURL, pageCount, targetQuery, header)
+	eventStandingData = helper.event_data_slug(slug=slugURL, page=pageCount, query=targetQuery, auth=authToken)
 	eventStandingListTemp = eventStandingData['standings']['nodes']
 
 	# If the returned page is empty, then there are no more pages to go through
