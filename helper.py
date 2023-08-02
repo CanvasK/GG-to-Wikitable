@@ -68,6 +68,16 @@ def gg_query(query, variables, auth, json_err=0):
 		return gg_query(query=query, variables=variables, auth=auth, json_err=json_err+1)
 
 
+def event_data_slug(slug, page, query, auth):
+	variables = {"eventSlug": slug, "page": page}
+	response = gg_query(query=query, variables=variables, auth=auth)
+	try:
+		data = response['data']['event']
+		return data
+	except KeyError:
+		print(response)
+
+
 def make_ordinal(n):
 	"""
 	Convert an integer into its ordinal representation::
@@ -124,16 +134,6 @@ def smasher_link(name, flag="", link=True):
 			sm_str = name
 
 	return sm_str
-
-
-def event_data_slug(slug, page, query, auth):
-	variables = {"eventSlug": slug, "page": page}
-	response = gg_query(query=query, variables=variables, auth=auth)
-	try:
-		data = response['data']['event']
-		return data
-	except KeyError:
-		print(response)
 
 
 def dq_judge(e_id, sets: dict, max_dq):
