@@ -21,18 +21,13 @@ except FileNotFoundError:
 	exit()
 
 slugURL = config['request']['EventSlug'].strip()
-
-if len(slugURL) == 0:
+try:
+	slugURL = helper.gg_slug_cleaner(slugURL)
+except helper.SlugMissingError as e:
 	print("EventSlug is empty. Make sure you are using the correct Mode in the config or add an event to EventSlug")
 	time.sleep(20)
 	exit()
 
-if "start.gg" in slugURL:
-	slugURL = re.findall(r"start\.gg/(.*)", slugURL)[0].strip()
-
-slugURL = slugURL.replace("/events/", "/event/")
-slugURL = slugURL.split("/", 4)[0:4]
-slugURL = "/".join(slugURL)
 
 gameByID = {1:     ['Super Smash Bros. Melee', 'SSBM'],
 			2:     ['Project M', 'PM'],

@@ -4,8 +4,10 @@ import urllib.parse
 import urllib.error
 import json
 import time
+import re
 
 
+# Query related stuff
 def gg_query(query, variables, auth, json_err=0):
 	"""
 
@@ -78,6 +80,34 @@ def event_data_slug(slug, page, query, auth):
 		print(response)
 
 
+# Slug related stuff
+class SlugMissingError(Exception):
+	# slug is missing error
+	pass
+
+
+def gg_slug_cleaner(slug):
+	if len(slug) == 0:
+		raise SlugMissingError
+
+	# Slug shouldn't contain the domain
+	if "start.gg" in slug:
+		slug = re.findall(r"start\.gg/(.*)", slug)[0].strip()
+
+	# API does not consider "events == event" despite it working in browser
+	slug = slug.replace("/events/", "/event/")
+	# Remove stuff at the end
+	# Slug should only be "tournament/T/event/E" at most
+	if "/event/" in slug:
+		slug = slug.split("/", 4)[0:4]
+	else:
+		slug = slug.split("/", 4)[0:2]
+	slug = "/".join(slug)
+
+	return slug
+
+
+# Helper functions
 def make_ordinal(n):
 	"""
 	Convert an integer into its ordinal representation::
