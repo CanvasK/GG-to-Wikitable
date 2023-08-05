@@ -70,8 +70,8 @@ def gg_query(query, variables, auth, json_err=0):
 		return gg_query(query=query, variables=variables, auth=auth, json_err=json_err+1)
 
 
-def event_data_slug(slug, page, query, auth):
-	variables = {"eventSlug": slug, "page": page}
+def event_data_slug(slug, page, per_page, query, auth):
+	variables = {"eventSlug": slug, "page": page, "perPage": per_page}
 	response = gg_query(query=query, variables=variables, auth=auth)
 	try:
 		data = response['data']['event']
