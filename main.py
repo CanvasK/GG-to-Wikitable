@@ -39,34 +39,34 @@ gameByID = {1:     ['Super Smash Bros. Melee', 'SSBM'],
 
 
 queryOnceData = """
-	query ($eventSlug: String!){
-		event(slug: $eventSlug) {
-			id
+query ($eventSlug: String!) {
+	event (slug: $eventSlug) {
+		id
+		name
+		slug
+		tournament { name }
+		videogame { id }
+		startAt
+		createdAt
+		updatedAt
+		prizingInfo
+		isOnline
+		numEntrants
+		teamRosterSize { maxPlayers }
+		# standings (query: {page: 1, perPage: 100}) { pageInfo { totalPages } }
+		phases {
 			name
-			slug
-			tournament { name }
-			videogame { id }
-			startAt
-			createdAt
-			updatedAt
-			prizingInfo
-			isOnline
-			numEntrants
-			teamRosterSize { maxPlayers }
-			# standings (query: {page: 1, perPage: 100}) { pageInfo { totalPages } }
-			phases {
-				name
-				groupCount
-				phaseGroups(query: {perPage: 50, page: 1}) {
-					nodes { bracketUrl }
-				}
+			groupCount
+			phaseGroups (query: {perPage: 50, page: 1}) {
+				nodes { bracketUrl }
 			}
 		}
 	}
+}
 """
 
 querySingles = """
-query ($eventSlug: String!, $page: Int!){
+query ($eventSlug: String!, $page: Int!) {
 	event(slug: $eventSlug) {
 		standings(query: {page: $page, perPage: 50}) {
 			nodes {
@@ -79,7 +79,7 @@ query ($eventSlug: String!, $page: Int!){
 				entrant {
 					id
 					name
-					paginatedSets(page: 1, perPage: 50, sortType: RECENT) {
+					paginatedSets (page: 1, perPage: 50, sortType: RECENT) {
 						nodes {
 							displayScore
 							winnerId
@@ -94,7 +94,7 @@ query ($eventSlug: String!, $page: Int!){
 """
 
 queryDoubles = """
-query ($eventSlug: String!, $page: Int!){
+query ($eventSlug: String!, $page: Int!) {
 	event(slug: $eventSlug) {
 		standings(query: {page: $page, perPage: 40}) {
 			nodes {
@@ -112,7 +112,7 @@ query ($eventSlug: String!, $page: Int!){
 							}
 						}
 					}
-					paginatedSets(page: 1, perPage: 50, sortType: RECENT) {
+					paginatedSets (page: 1, perPage: 50, sortType: RECENT) {
 						nodes {
 							displayScore
 							winnerId
