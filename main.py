@@ -184,7 +184,7 @@ for t in targetEvents:
 			eventOptions.append({"name": e['name'], "slug": e['slug']})
 
 		print("-" * 5)
-		print("Tournament was used as a target. (" + str(t) + ")\nInput the listed number of the event to generate a table for.\nTo select multiple, separate each number with a comma (e.g. 1, 3).")
+		print("Tournament was used as a target. (" + str(t) + ")\nInput the listed number of the event to generate a table for.\nTo select multiple, separate each number with a comma (e.g. 1, 3).\n(Leave blank to skip)")
 		print("-" * 5)
 
 		# Show the list of valid events to choose from
@@ -194,20 +194,24 @@ for t in targetEvents:
 			print("{c}: {n} | {s}".format(c=eventIndexer, n=e['name'], s=e['slug']))
 			eventIndexer += 1
 
-		selectedEvents = input().split(",")
+		selectedEvents = input()
 		# Store the tournament for later to prevent the loop from terminating early
 		targetsRemove.append(t)
-		for s in selectedEvents:
-			try:
-				# Add selected event to temporary list to prevent the loop from being longer than intended
-				if targetsNew not in targetEvents:
-					targetsNew.append(eventOptions[int(s) - 1]['slug'])
-			except ValueError:
-				print(str(s) + " is not a number")
-				pass
-			except IndexError:
-				print(str(s) + " is not an option")
-				pass
+		if len(selectedEvents.strip()) == 0:
+			continue
+		else:
+			selectedEvents = selectedEvents.split(",")
+			for s in selectedEvents:
+				try:
+					# Add selected event to temporary list to prevent the loop from being longer than intended
+					if targetsNew not in targetEvents:
+						targetsNew.append(eventOptions[int(s) - 1]['slug'])
+				except ValueError:
+					print(str(s) + " is not a number")
+					pass
+				except IndexError:
+					print(str(s) + " is not an option")
+					pass
 
 	else:
 		pass
