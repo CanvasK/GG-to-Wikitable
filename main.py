@@ -157,50 +157,78 @@ query ($eventSlug: String!, $page: Int!, $perPage: Int!) {
 # ===================================== Events =====================================
 
 targetEvents = []
+mainSettings = {
+	"MaxPlacement": config.getint('request', 'MaxPlacement'),
+	"MaxPages": config.getint('request', 'MaxPages'),
+	"MaxLinked": config.getint('output', 'MaxLinked'),
+	"MaxDQ": config.getint('output', 'MaxDQ'),
+	"OutputInfo": config.getboolean('output', 'OutputInfo')
+}
+
 with open("targets.txt", 'r', encoding='utf-8') as t:
 	targetLoadTemp = []
 	for line in t:
+		tempSettings = mainSettings.copy()
+		# Ignore comments
 		if not line.startswith("#"):
+			# Skip blank lines
 			if len(line) > 0:
-				slug = line.split(",")[0].strip()
+				if ";" in line:
+					slug, setting = line.split(";", 1)
+					for s in setting.split(","):
+						for k in tempSettings:
+							if s.strip().startswith(k):
+								_s = s.split("=")[-1].strip()
+								try:
+									tempSettings[k] = int(_s)
+								except ValueError as e:
+									print(e)
+									try:
+										tempSettings[k] = bool(_s)
+									except ValueError:
+										continue
+				else:
+					slug = line.strip()
 				try:
 					slug = helper.gg_slug_cleaner(slug)
 				except helper.SlugMissingError as e:
 					print("Slug field is empty. Make sure there is a slug at the beginning of the line in targets.txt")
 					continue
-				targetLoadTemp.append(slug)
-				print("\n" * 3)
-	targetEvents = list(dict.fromkeys(targetLoadTemp))
+				targetLoadTemp.append({"slug": slug, "settings": tempSettings})
+	print("\n" * 3)
+	targetEvents = targetLoadTemp
 
 targetsNew = []
 targetsRemove = []
 
-for t in targetEvents:
-	if t.count("/") == 1:
+for target in targetEvents:
+	slug = target["slug"]
+
+	if slug.count("/") == 1:
 		decreasingSleep.sleep(end_time=time.time())
-		variables = {"slug": t, "gameIDs": list(gameByID)}
+		variables = {"slug": slug, "gameIDs": list(gameByID)}
 		eventFromTrn = helper.gg_query(query=queryEventFromTrn, variables=variables, auth=authToken)
 
 		eventsTemp = eventFromTrn['data']['tournament']['events']
-		eventOptions = []
+		eventSelectables = []
 
 		for e in eventsTemp:
-			eventOptions.append({"name": e['name'], "slug": e['slug']})
+			eventSelectables.append({"name": e['name'], "slug": e['slug']})
 
 		print("-" * 5)
-		print("Tournament was used as a target. (" + str(t) + ")\nInput the listed number of the event to generate a table for.\nTo select multiple, separate each number with a comma (e.g. 1, 3).\n(Leave blank to skip)")
+		print("Tournament was used as a target. (" + str(slug) + ")\nInput the listed number of the event to generate a table for.\nTo select multiple, separate each number with a comma (e.g. 1, 3).\n(Leave blank to skip)")
 		print("-" * 5)
 
 		# Show the list of valid events to choose from
 		# One-indexed to be intuitive for non-programmers. Index is decremented later
 		eventIndexer = 1
-		for e in eventOptions:
+		for e in eventSelectables:
 			print("{c}: {n} | {s}".format(c=eventIndexer, n=e['name'], s=e['slug']))
 			eventIndexer += 1
 
 		selectedEvents = input()
 		# Store the tournament for later to prevent the loop from terminating early
-		targetsRemove.append(t)
+		targetsRemove.append(target)
 		if len(selectedEvents.strip()) == 0:
 			continue
 		else:
@@ -209,7 +237,7 @@ for t in targetEvents:
 				try:
 					# Add selected event to temporary list to prevent the loop from being longer than intended
 					if targetsNew not in targetEvents:
-						targetsNew.append(eventOptions[int(s) - 1]['slug'])
+						targetsNew.append({"slug": eventSelectables[int(s) - 1]['slug'], "settings": target["settings"]})
 				except ValueError:
 					print(str(s) + " is not a number")
 					pass
@@ -231,14 +259,19 @@ if len(targetEvents) == 0:
 print(targetEvents)
 
 
-maxPlace = config.getint('request', 'MaxPlacement')
-maxPages = config.getint('request', 'MaxPages')
-
-for eventSlug in targetEvents:
-
+for event in targetEvents:
 	# ===================================== Query =====================================
+
 	print_time()
 	print("="*10 + " Starting queries")
+
+	activeSettings = event["settings"]
+	activeSlug = event["slug"]
+
+	# Data about the event that doesn't change
+	eventMainData = helper.gg_query(query=queryOnceData, variables={"eventSlug": activeSlug}, auth=authToken)['data']['event']
+
+	# Info about the event that doesn't change
 	eventMainInfo = {
 		"Tournament": "",
 		"Event": "",
@@ -254,11 +287,8 @@ for eventSlug in targetEvents:
 		"Prize info": ""
 	}
 
-	# Data about the event that doesn't change
-	eventMainData = helper.gg_query(query=queryOnceData, variables={"eventSlug": eventSlug}, auth=authToken)['data']['event']
-
+	# Get brackets and keep only ones with 1 group
 	phaseData = eventMainData['phases']
-
 	phaseBrackets = []
 	for phase in phaseData:
 		if phase['groupCount'] == 1:
@@ -271,6 +301,7 @@ for eventSlug in targetEvents:
 	if eventMainData['teamRosterSize'] is not None:
 		eventMainInfo["Team size"] = int(eventMainData['teamRosterSize']['maxPlayers'])
 
+	# Determine query based on team size
 	if eventMainInfo["Team size"] == 1:
 		targetQuery = querySingles
 	elif eventMainInfo["Team size"] == 2:
@@ -280,6 +311,7 @@ for eventSlug in targetEvents:
 		end_pause()
 		continue
 
+	# Initialize info about the event
 	eventMainInfo["Tournament"] = eventMainData['tournament']['name']
 	eventMainInfo["Event"] = eventMainData['name']
 	eventMainInfo["URL"] = "https://www.start.gg/" + eventMainData['slug']
@@ -294,6 +326,7 @@ for eventSlug in targetEvents:
 	if eventMainData['prizingInfo']['enablePrizing']:
 		eventMainInfo["Prize info"] = eventMainData['prizingInfo']
 
+	# Print info about the event
 	print("tournament:", eventMainInfo["Tournament"])
 	print("event:", eventMainInfo["Event"])
 	print(eventMainInfo["URL"])
@@ -309,11 +342,13 @@ for eventSlug in targetEvents:
 	standingsList = list()
 	pageCount = 1
 
+	print("Settings:", activeSettings)
+	# ===================================== Pages =====================================
 	# Loop through pages until limit is reached
 	while True:
 		queryStartTime = time.time()
 
-		eventStandingData = helper.event_data_slug(slug=eventSlug, page=pageCount, per_page=perPageCount, query=targetQuery, auth=authToken)
+		eventStandingData = helper.event_data_slug(slug=activeSlug, page=pageCount, per_page=perPageCount, query=targetQuery, auth=authToken)
 		eventStandingListTemp = eventStandingData['standings']['nodes']
 
 		# If the returned page is empty, then there are no more pages to go through
@@ -324,12 +359,12 @@ for eventSlug in targetEvents:
 		standingsList.extend(eventStandingListTemp)
 
 		# Only placements up to a point are documented. Stop if too many
-		if maxPlace > 0:
-			if eventStandingListTemp[-1]['placement'] > maxPlace:
+		if activeSettings["MaxPlacement"] > 0:
+			if eventStandingListTemp[-1]['placement'] > activeSettings["MaxPlacement"]:
 				print("\npages:", pageCount)
 				break
 
-		if (maxPages > 0) and (maxPages == pageCount):
+		if (activeSettings["MaxPages"] > 0) and (activeSettings["MaxPages"] == pageCount):
 			print("\nMax pages reached")
 			break
 
@@ -350,8 +385,6 @@ for eventSlug in targetEvents:
 	print_time()
 	print("="*10 + " Creating table ")
 
-	maxLink = config.getint('output', 'MaxLinked')
-	maxDq = config.getint('output', 'MaxDQ')
 	dqOrder = []
 	tableString = ""
 
@@ -366,14 +399,14 @@ for eventSlug in targetEvents:
 
 			smasherName = row['entrant']['name'].split("|")[-1].strip()
 			country = helper.get_flag(row)
-			smasherString = helper.smasher_link(smasherName, country, row['placement'] <= maxLink)
+			smasherString = helper.smasher_link(smasherName, country, row['placement'] <= activeSettings["MaxLinked"])
 
 			charHeads = ""
 
 			# DQ stuff
 			setList = row['entrant']['paginatedSets']['nodes']
 
-			dqJudgement, dqSets = helper.dq_judge(entrantID, setList, maxDq)
+			dqJudgement, dqSets = helper.dq_judge(entrantID, setList, activeSettings["MaxDQ"])
 
 			if dqJudgement == "pass":
 				pass
@@ -423,13 +456,13 @@ for eventSlug in targetEvents:
 			for i in range(2):
 				sName = teamMembers[i]['participant']['gamerTag'].split("|")[-1].strip()
 				sCountry = helper.get_flag(teamMembers[i]['participant'])
-				sString = helper.smasher_link(sName, sCountry, row['placement'] <= maxLink)
+				sString = helper.smasher_link(sName, sCountry, row['placement'] <= activeSettings["MaxLinked"])
 
 				smasherStrings.append(sString)
 
 			# DQ stuff
 			setList = row['entrant']['paginatedSets']['nodes']
-			dqJudgement, dqSets = helper.dq_judge(entrantID, setList, maxDq)
+			dqJudgement, dqSets = helper.dq_judge(entrantID, setList, activeSettings["MaxDQ"])
 
 			if dqJudgement == "pass":
 				pass
@@ -477,7 +510,7 @@ for eventSlug in targetEvents:
 
 	headerString = "===''[[{0}]]'' {1}===\n"
 
-	outputPath = os.path.join("outputs", str(eventSlug).replace("tournament/", "").replace("event/", ""))
+	outputPath = os.path.join("outputs", str(activeSlug).replace("tournament/", "").replace("/event/", "/"))
 	if not os.path.exists(outputPath):
 		os.makedirs(outputPath)
 
@@ -501,7 +534,7 @@ for eventSlug in targetEvents:
 		# Table
 		f.writelines(tableString)
 
-	if config.getboolean("output", "OutputInfo"):
+	if activeSettings["OutputInfo"]:
 		with open(os.path.join(outputPath, "info.txt"), "w+", encoding='utf-8') as f:
 			json.dump(eventMainInfo, f, ensure_ascii=False, indent=1)
 
