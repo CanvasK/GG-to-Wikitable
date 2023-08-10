@@ -10,6 +10,10 @@ def print_time():
 	print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
 
+def end_pause():
+	time.sleep(config.getint('other', 'EndPause'))
+
+
 print_time()
 decreasingSleep = helper.Sleeper(start_time=time.time(), end_time=time.time())
 
@@ -273,7 +277,7 @@ for eventSlug in targetEvents:
 		targetQuery = queryDoubles
 	else:
 		print("Unsupported type")
-		time.sleep(config.getint('other', 'EndPause'))
+		end_pause()
 		continue
 
 	eventMainInfo["Tournament"] = eventMainData['tournament']['name']
@@ -506,4 +510,4 @@ for eventSlug in targetEvents:
 
 print("="*10 + " Finished ")
 print_time()
-time.sleep(config.getint('other', 'EndPause'))
+end_pause()
