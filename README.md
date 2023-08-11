@@ -5,7 +5,7 @@ Tested on Python 3.7. Other versions have not been tested and cannot be guarante
 
 # How to use
 ## Authorization
-A file called `auth.txt` will need to be created in the same directory as `main.py` with your own start.gg authorization code for the program to work.
+A start.gg authorization code will be needed for operation. The authorization code should go in a file called `auth.txt` that is in the same directory as `main.py`. This file is automatically created when the script is first run and there will be a prompt to add your code (this will also add your code to the file, skipping this step for future runs).
 
 ## Config
 Settings for the script are in `config.cfg`.
