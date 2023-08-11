@@ -35,24 +35,28 @@ def gg_query(query, variables, auth, json_err=0):
 		if response.getcode() == 200:
 			pass
 		elif response.getcode() == 429:  # too many requests
+			print()
 			print("Too many requests. Temporarily throttling")
 			time.sleep(20)
 			pass
 		elif response.getcode() == 503:  # service unavailable
 			pass
 	except urllib.error.HTTPError as e:
+		print()
 		print(e)
 		print("Service unavailable, sleeping for a bit")
 		time.sleep(5)
 		try:
 			response = urllib.request.urlopen(req)
 		except urllib.error.HTTPError as e:
+			print()
 			print(e)
 			print("Service unavailable, sleeping for a bit")
 			time.sleep(10)
 			try:
 				response = urllib.request.urlopen(req)
 			except urllib.error.HTTPError as e:
+				print()
 				print(e)
 				print("Service unavailable, sleeping for a bit")
 				time.sleep(20)
