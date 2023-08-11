@@ -32,17 +32,26 @@ perPageCount = 40
 config = configparser.ConfigParser()
 config.read('config.cfg')
 
-try:
-	with open("auth.txt") as a:
+if os.path.exists("auth.txt"):
+	with open("auth.txt", 'r+') as a:
 		authToken = a.read().strip()
 		if len(authToken) == 0:
-			print("auth.txt is empty. Please paste your authentication token into the file and save")
-			time.sleep(20)
+			print("No token found in auth.txt.")
+			authInput = input("Paste your authorization code here and press enter: (leave blank to close)\n")
+			if len(authInput.strip()) == 0:
+				exit()
+			else:
+				authToken = authInput.strip()
+				a.write(authToken)
+else:
+	with open("auth.txt", 'a') as a:
+		print("No token found in auth.txt.")
+		authInput = input("Paste your authorization code here and press enter: (leave blank to close)\n")
+		if len(authInput.strip()) == 0:
 			exit()
-except FileNotFoundError:
-	print("auth.txt does not exist. Please create the file in the same folder as main.py with an authentication token")
-	time.sleep(20)
-	exit()
+		else:
+			authToken = authInput.strip()
+			a.write(authToken)
 
 queryEventFromTrn = """
 query ($slug: String!, $gameIDs: [ID]) {
@@ -195,7 +204,7 @@ with open("targets.txt", 'r', encoding='utf-8') as t:
 					print("Slug field is empty. Make sure there is a slug at the beginning of the line in targets.txt")
 					continue
 				targetLoadTemp.append({"slug": slug, "settings": tempSettings})
-	print("\n" * 3)
+	# print("\n" * 3)
 	targetEvents = targetLoadTemp
 
 targetsNew = []
@@ -253,9 +262,12 @@ for t in targetsRemove:
 
 targetEvents.extend(targetsNew)
 if len(targetEvents) == 0:
-	print("targets.txt is empty. Please add events to targets.txt")
-	time.sleep(20)
-	exit()
+	print("targets.txt is empty. Please add events to targets.txt or enter an event URL below: (leave blank to exit)")
+	targetInput = input()
+	if len(targetInput.strip()) == 0:
+		exit()
+	else:
+		targetEvents.append({"slug": helper.gg_slug_cleaner(targetInput), "settings": mainSettings.copy()})
 print(targetEvents)
 
 
