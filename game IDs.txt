@@ -4,6 +4,7 @@
 2,     Project M,                          PM
 3,     Super Smash Bros. for Wii U,        SSB4
 4,     Super Smash Bros.,                  SSB
+5,     Super Smash Bros. Brawl,            SSBB
 29,    Super Smash Bros. for Nintendo 3DS, SSB4
 1386,  Super Smash Bros. Ultimate,         SSBU
 33602, Project+,                           P+
