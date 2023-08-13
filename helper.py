@@ -8,7 +8,22 @@ import re
 
 
 # Query related stuff
-def gg_query(query, variables, auth, json_err=0):
+class TooManyRequestsError(Exception):
+	# Too many requests at a time
+	pass
+
+
+class ServiceUnavailableError(Exception):
+	# Couldn't connect
+	pass
+
+
+class BadRequestError(Exception):
+	# Bad request, likely auth code
+	pass
+
+
+def gg_query(query, variables, auth, auto_retry=True, sec=10):
 	"""
 
 	:type query: str
@@ -17,61 +32,83 @@ def gg_query(query, variables, auth, json_err=0):
 	:param variables: The changeable settings for the API such as page number, items per page, etc.
 	:type auth: str
 	:param auth: The user's start.gg authorization code
-	:param json_err: DO NOT USE. Used for error handling
+	:type auto_retry: bool
+	:param auto_retry: If the query should be run again if an error occurs
+	:type sec: int
+	:param sec: Time between auto retries
 	:return:
 	:rtype: dict
 	"""
-	header = {"Authorization": "Bearer " + auth, "Content-Type": "application/json"}
 
-	if json_err >= 5:
-		print("The start.gg servers aren't sending valid JSON after several attempts. Try a different query or wait a few minutes.")
-		time.sleep(30)
-		exit()
+	def _gg_query(query, variables, auth, auto_retry, sec):
+		header = {"Authorization": "Bearer " + auth, "Content-Type": "application/json"}
+		json_request = {'query': query, 'variables': variables}
 
-	json_request = {'query': query, 'variables': variables}
-	req = urllib.request.Request('https://api.smash.gg/gql/alpha', data=json.dumps(json_request).encode('utf-8'), headers=header)
-	try:
-		response = urllib.request.urlopen(req)
-		if response.getcode() == 200:
-			pass
-		elif response.getcode() == 429:  # too many requests
+		def err_prnt(err, err_response):
 			print()
-			print("Too many requests. Temporarily throttling")
-			time.sleep(20)
-			pass
-		elif response.getcode() == 503:  # service unavailable
-			pass
-	except urllib.error.HTTPError as e:
-		print()
-		print(e)
-		print("Service unavailable, sleeping for a bit")
-		time.sleep(5)
+			print(err)
+			print(err_response)
+
 		try:
-			response = urllib.request.urlopen(req)
-		except urllib.error.HTTPError as e:
-			print()
-			print(e)
-			print("Service unavailable, sleeping for a bit")
-			time.sleep(10)
+			req = urllib.request.Request('https://api.smash.gg/gql/alpha', data=json.dumps(json_request).encode('utf-8'), headers=header)
+			response = urllib.request.urlopen(req, timeout=20)
+			if response.getcode() == 400:
+				raise BadRequestError
+			elif response.getcode() == 429:  # too many requests
+				raise TooManyRequestsError
+			elif response.getcode() == 503:  # service unavailable
+				raise ServiceUnavailableError
+
+			res = response.read()
+			response.close()
 			try:
-				response = urllib.request.urlopen(req)
-			except urllib.error.HTTPError as e:
-				print()
-				print(e)
-				print("Service unavailable, sleeping for a bit")
-				time.sleep(20)
-				response = urllib.request.urlopen(req)
+				return json.loads(res)
+			except json.decoder.JSONDecodeError as e:
+				err_prnt(e, "Received invalid JSON from server, trying again in {} seconds".format(sec))
+				time.sleep(sec)
+				return _gg_query(query, variables, auth, auto_retry, sec * 2)
 
-	res = response.read()
-	response.close()
+		except BadRequestError as e:
+			err_prnt(e, "400: Bad request. Good chance the authorization key isn't valid")
+			return
 
-	try:
-		return json.loads(res)
-	except json.decoder.JSONDecodeError as e:
-		print("Received invalid JSON from server. Trying again in a bit.")
-		print(e)
-		time.sleep(1*(json_err+1))
-		return gg_query(query=query, variables=variables, auth=auth, json_err=json_err+1)
+		except TooManyRequestsError as e:
+			if auto_retry:
+				err_prnt(e, "429: Too many requests right now, trying again in {} seconds".format(sec))
+				time.sleep(sec)
+				return _gg_query(query, variables, auth, auto_retry, sec * 2)
+			else:
+				err_prnt(e, "429: Too many requests right now")
+				return
+
+		except ServiceUnavailableError as e:
+			if auto_retry:
+				err_prnt(e, "503: start.gg servers are trash, trying again in {} seconds".format(sec))
+				time.sleep(sec)
+				return _gg_query(query, variables, auth, auto_retry, sec * 2)
+			else:
+				err_prnt(e, "503: start.gg servers are trash")
+				return
+
+		except urllib.error.HTTPError as e:
+			if auto_retry:
+				err_prnt(e, "Service unavailable, trying again in {} seconds".format(sec))
+				time.sleep(sec)
+				return _gg_query(query, variables, auth, auto_retry, sec * 2)
+			else:
+				err_prnt(e, "Service unavailable")
+				return
+
+		except urllib.error.URLError as e:
+			if auto_retry:
+				err_prnt(e, "Couldn't connect, trying again in {} seconds".format(sec))
+				time.sleep(sec)
+				return _gg_query(query, variables, auth, auto_retry, sec * 2)
+			else:
+				err_prnt(e, "Couldn't connect")
+				return
+
+	return _gg_query(query=query, variables=variables, auth=auth, auto_retry=auto_retry, sec=sec)
 
 
 def event_data_slug(slug, page, per_page, query, auth):
