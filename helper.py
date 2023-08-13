@@ -213,9 +213,10 @@ class Sleeper:
 	:argument:
 		start_time (float) and end_time (float): Simple time.time() will do. These can be the same when initializing.
 	"""
-	def __init__(self, start_time, end_time, list_size=10):
+	def __init__(self, start_time, end_time, target_time=0.8, list_size=10):
 		self.start_time = start_time
 		self.end_time = end_time
+		self.target_time = target_time
 		self.list_size = list_size
 	sleep_time = 0.5
 	delta_time = 1
@@ -236,11 +237,11 @@ class Sleeper:
 		# start.gg limits requests to 80 per 60 seconds, or about 0.75 seconds per request
 		# Sleep is soft capped at 0.8 to allow for some buffer
 		# If 0.8 is exceeded, sleep duration is slowly increased to get back in line
-		if self.avg_time >= 2.0:
+		if self.avg_time >= self.target_time*2.5:
 			self.sleep_time = max(0.0, self.sleep_time - 0.1)
-		elif self.avg_time >= 1.0:
+		elif self.avg_time >= self.target_time*1.25:
 			self.sleep_time = max(0.0, self.sleep_time - 0.02)
-		elif self.avg_time > 0.8:
+		elif self.avg_time > self.target_time:
 			self.sleep_time = max(0.0, self.sleep_time - 0.01)
 		else:
 			self.sleep_time = self.sleep_time + 0.015
