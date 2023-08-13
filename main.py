@@ -15,6 +15,7 @@ def end_pause():
 
 
 print_time()
+perPageCount = 40
 decreasingSleep = helper.Sleeper(start_time=time.time(), end_time=time.time())
 
 gameByID = dict()
@@ -26,8 +27,6 @@ with open("game IDs.txt") as g:
 			value = [v.strip() for v in value.split(",")]
 			gameByID[key] = value
 
-
-perPageCount = 40
 
 config = configparser.ConfigParser()
 config.read('config.cfg')
