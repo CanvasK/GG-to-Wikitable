@@ -8,4 +8,31 @@
 29,    Super Smash Bros. for Nintendo 3DS, SSB4
 1386,  Super Smash Bros. Ultimate,         SSBU
 33602, Project+,                           P+
+34157, HewDraw Remix,                      HDR
 39478, Smash Remix,                        SR
+# Jank, pre-standard IDs
+# Project M Singles, Super Smash Bros Melee, Super Smash Bros. 64, Smash Wii U, ProjectM, Super Smash Bros. Melee Crews, Smash 5, Super Smash Bros PM, super smash bros ultimate, Smash Ultimate, Super Smash Bros ultimate, Super Smash Brors. Ultimate, Super Smash Brothers Ultimate, Smash Ultimate, Smash Ultimate, Super Smash Bros. 64 1vs1, Super Smash Bros. 64, smash ultimate singles, Smash Ultimate, Smash Ultimate, Super smash bros melee, Project+ v1.05b, Project+, Project+
+85,    Project M, PM
+214,   Super Smash Bros. Melee, SSBM
+248,   Super Smash Bros., 64
+261,   Super Smash Bros. for Wii U, SSB4
+696,   Project M, PM
+1479,  Super Smash Bros. Melee, SSBM
+261,   Super Smash Bros. for Wii U, SSB4
+2186,  Project M, PM
+2251,  Super Smash Bros. Ultimate, SSBU
+2457,  Super Smash Bros. Ultimate, SSBU
+2717,  Super Smash Bros. Ultimate, SSBU
+2728,  Super Smash Bros. Ultimate, SSBU
+2793,  Super Smash Bros. Ultimate, SSBU
+3071,  Super Smash Bros. Ultimate, SSBU
+3074,  Super Smash Bros. Ultimate, SSBU
+3082,  Super Smash Bros., 64
+3083,  Super Smash Bros., 64
+3092,  Super Smash Bros. Ultimate, SSBU
+3103,  Super Smash Bros. Ultimate, SSBU
+3104,  Super Smash Bros. Ultimate, SSBU
+3438,  Super Smash Bros. Melee, SSBM
+4342,  Project+, P+
+22301, Project+, P+
+34180, Project+, P+
