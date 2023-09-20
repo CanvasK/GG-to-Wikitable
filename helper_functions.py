@@ -1,4 +1,7 @@
+from helper_exceptions import *
+
 import math
+import os
 import urllib.request
 import urllib.parse
 import urllib.error
@@ -8,22 +11,8 @@ import re
 
 
 # Query related stuff
-class TooManyRequestsError(Exception):
-	# Too many requests at a time
-	pass
 
-
-class ServiceUnavailableError(Exception):
-	# Couldn't connect
-	pass
-
-
-class BadRequestError(Exception):
-	# Bad request, likely auth code
-	pass
-
-
-def gg_query(query, variables, auth, auto_retry=True, sec=10):
+def base_gg_query(query, variables, auth, auto_retry=True, retry_delay=10):
 	"""
 
 	:type query: str
@@ -34,13 +23,13 @@ def gg_query(query, variables, auth, auto_retry=True, sec=10):
 	:param auth: The user's start.gg authorization code
 	:type auto_retry: bool
 	:param auto_retry: If the query should be run again if an error occurs
-	:type sec: int
-	:param sec: Time between auto retries
+	:type retry_delay: int
+	:param retry_delay: Time between auto retries
 	:return:
 	:rtype: dict
 	"""
 
-	def _gg_query(query, variables, auth, auto_retry, sec):
+	def _gg_query(query, variables, auth, auto_retry, retry_delay):
 		header = {"Authorization": "Bearer " + auth, "Content-Type": "application/json"}
 		json_request = {'query': query, 'variables': variables}
 
@@ -64,9 +53,9 @@ def gg_query(query, variables, auth, auto_retry=True, sec=10):
 			try:
 				return json.loads(res)
 			except json.decoder.JSONDecodeError as e:
-				err_prnt(e, "Received invalid JSON from server, trying again in {} seconds".format(sec))
-				time.sleep(sec)
-				return _gg_query(query, variables, auth, auto_retry, sec * 2)
+				err_prnt(e, "Received invalid JSON from server, trying again in {} seconds".format(retry_delay))
+				time.sleep(retry_delay)
+				return _gg_query(query, variables, auth, auto_retry, retry_delay * 2)
 
 		except BadRequestError as e:
 			err_prnt(e, "400: Bad request. Good chance the authorization key isn't valid")
@@ -74,46 +63,46 @@ def gg_query(query, variables, auth, auto_retry=True, sec=10):
 
 		except TooManyRequestsError as e:
 			if auto_retry:
-				err_prnt(e, "429: Too many requests right now, trying again in {} seconds".format(sec))
-				time.sleep(sec)
-				return _gg_query(query, variables, auth, auto_retry, sec * 2)
+				err_prnt(e, "429: Too many requests right now, trying again in {} seconds".format(retry_delay))
+				time.sleep(retry_delay)
+				return _gg_query(query, variables, auth, auto_retry, retry_delay * 2)
 			else:
 				err_prnt(e, "429: Too many requests right now")
 				return
 
 		except ServiceUnavailableError as e:
 			if auto_retry:
-				err_prnt(e, "503: start.gg servers are trash, trying again in {} seconds".format(sec))
-				time.sleep(sec)
-				return _gg_query(query, variables, auth, auto_retry, sec * 2)
+				err_prnt(e, "503: start.gg servers are trash, trying again in {} seconds".format(retry_delay))
+				time.sleep(retry_delay)
+				return _gg_query(query, variables, auth, auto_retry, retry_delay * 2)
 			else:
 				err_prnt(e, "503: start.gg servers are trash")
 				return
 
 		except urllib.error.HTTPError as e:
 			if auto_retry:
-				err_prnt(e, "Service unavailable, trying again in {} seconds".format(sec))
-				time.sleep(sec)
-				return _gg_query(query, variables, auth, auto_retry, sec * 2)
+				err_prnt(e, "Service unavailable, trying again in {} seconds".format(retry_delay))
+				time.sleep(retry_delay)
+				return _gg_query(query, variables, auth, auto_retry, retry_delay * 2)
 			else:
 				err_prnt(e, "Service unavailable")
 				return
 
 		except urllib.error.URLError as e:
 			if auto_retry:
-				err_prnt(e, "Couldn't connect, trying again in {} seconds".format(sec))
-				time.sleep(sec)
-				return _gg_query(query, variables, auth, auto_retry, sec * 2)
+				err_prnt(e, "Couldn't connect, trying again in {} seconds".format(retry_delay))
+				time.sleep(retry_delay)
+				return _gg_query(query, variables, auth, auto_retry, retry_delay * 2)
 			else:
 				err_prnt(e, "Couldn't connect")
 				return
 
-	return _gg_query(query=query, variables=variables, auth=auth, auto_retry=auto_retry, sec=sec)
+	return _gg_query(query=query, variables=variables, auth=auth, auto_retry=auto_retry, retry_delay=retry_delay)
 
 
 def event_data_slug(slug, page, per_page, query, auth):
 	variables = {"eventSlug": slug, "page": page, "perPage": per_page}
-	response = gg_query(query=query, variables=variables, auth=auth)
+	response = base_gg_query(query=query, variables=variables, auth=auth)
 	try:
 		data = response['data']['event']
 		return data
@@ -122,10 +111,6 @@ def event_data_slug(slug, page, per_page, query, auth):
 
 
 # Slug related stuff
-class SlugMissingError(Exception):
-	# slug is missing error
-	pass
-
 
 def gg_slug_cleaner(slug):
 	if len(slug) == 0:
@@ -148,7 +133,7 @@ def gg_slug_cleaner(slug):
 	return slug
 
 
-# Helper functions
+# Extra functions
 def make_ordinal(n):
 	"""
 	Convert an integer into its ordinal representation::
@@ -168,18 +153,23 @@ def make_ordinal(n):
 
 
 countryShort = {}
-with open("country short.tsv", 'r', encoding='utf-8') as f:
+with open(os.path.join(os.path.dirname(__file__), "country short.tsv"), 'r', encoding='utf-8') as f:
 	for line in f:
 		(key, value) = line.split("\t")
 		countryShort[key.strip()] = value.strip()
 
 
-def get_flag(stnd: dict):
+def get_flag(standing_data: dict):
+	"""
+	Gets the user's flag. Does a bunch of checks because there are several things that can be None
+	:param standing_data: Data from the query result starting where 'GamerTag' is present
+	:return: str
+	"""
 	c = ""
-	if stnd['player']['user'] is not None:
-		if stnd['player']['user']['location'] is not None:
-			if stnd['player']['user']['location']['country'] is not None:
-				c = stnd['player']['user']['location']['country']
+	if standing_data['player']['user'] is not None:
+		if standing_data['player']['user']['location'] is not None:
+			if standing_data['player']['user']['location']['country'] is not None:
+				c = standing_data['player']['user']['location']['country']
 
 	if c in countryShort:
 		c = countryShort[c]
@@ -239,49 +229,3 @@ def dq_judge(e_id, sets: dict, max_dq):
 			_judgement = "pass"
 
 	return _judgement, _dqSets
-
-
-class Sleeper:
-	"""
-	This class provides a sleep function that gradually shortens in length.
-	For use when sending APIs that have limits on the number of queries they allow within a time period,
-	but when the queries take long enough that static delays waste time.
-
-	:argument:
-		start_time (float) and end_time (float): Simple time.time() will do. These can be the same when initializing.
-	"""
-	def __init__(self, start_time, end_time, target_time=0.8, list_size=10):
-		self.start_time = start_time
-		self.end_time = end_time
-		self.target_time = target_time
-		self.list_size = list_size
-	sleep_time = 0.5
-	delta_time = 1
-	avg_time = 1
-	list_times = []
-
-	def sleep(self, end_time: float):
-		"""Sleeps and adjusts sleep duration based on the average of the previous 5 calls.
-		:param end_time: time.time(). Should ideally be used after a query
-		"""
-		self.end_time = end_time
-		self.delta_time = min(5, self.end_time - self.start_time)
-		self.start_time = time.time()
-		self.list_times.append(self.delta_time)
-		del self.list_times[:-self.list_size]
-		self.avg_time = sum(self.list_times)/len(self.list_times)
-
-		# start.gg limits requests to 80 per 60 seconds, or about 0.75 seconds per request
-		# Sleep is soft capped at 0.8 to allow for some buffer
-		# If 0.8 is exceeded, sleep duration is slowly increased to get back in line
-		if self.avg_time >= self.target_time*2.5:
-			self.sleep_time = max(0.0, self.sleep_time - 0.1)
-		elif self.avg_time >= self.target_time*1.25:
-			self.sleep_time = max(0.0, self.sleep_time - 0.02)
-		elif self.avg_time > self.target_time:
-			self.sleep_time = max(0.0, self.sleep_time - 0.01)
-		else:
-			self.sleep_time = self.sleep_time + 0.015
-
-		# print("|{0:.4f} (avg {1})".format(self.sleep_time, self.avg_time))
-		time.sleep(self.sleep_time)
