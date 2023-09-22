@@ -97,35 +97,7 @@ query ($eventSlug: String!) {
 }
 """
 
-querySingles = """
-query ($eventSlug: String!, $page: Int!, $perPage: Int!) {
-	event(slug: $eventSlug) {
-		standings(query: {page: $page, perPage: $perPage}) {
-			nodes {
-				placement
-				player {
-					id
-					gamerTag
-					user { location { country } }
-				}
-				entrant {
-					id
-					name
-					paginatedSets (page: 1, perPage: 50, sortType: RECENT) {
-						nodes {
-							displayScore
-							winnerId
-							round
-						}
-					}
-				}
-			}
-		}
-	}
-}
-"""
-
-queryDoubles = """
+queryStandings = """
 query ($eventSlug: String!, $page: Int!, $perPage: Int!) {
 	event(slug: $eventSlug) {
 		standings(query: {page: $page, perPage: $perPage}) {
@@ -134,17 +106,13 @@ query ($eventSlug: String!, $page: Int!, $perPage: Int!) {
 				entrant {
 					id
 					name
-					team {
-						name
-						members {
-							isCaptain
-							participant {
-								gamerTag
-								player {
-									id
-									user { location { country } }
-								}
-							}
+					participants {
+						id
+						gamerTag
+						user {
+							id
+							discriminator
+							location { country }
 						}
 					}
 					paginatedSets (page: 1, perPage: 50, sortType: RECENT) {
