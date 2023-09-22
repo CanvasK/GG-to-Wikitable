@@ -13,6 +13,8 @@ Settings for the script are in `config.cfg`.
 ### request
 `MaxPlacement` and `MaxPages` will terminate the program early (if set to `-1`, it will continue until another part of the program stops it). The former is useful for creating smaller tables. The latter is useful for testing to ensure the query works as only one page is necessary to check.
 
+`PerPage` sets how many entries are returned in each page. Larger values mean fewer pages and thus fewer requests, but start.gg will spend longer preparing the data. The inverse for smaller values; more pages but start.gg sends the data faster. Events with complex formats (e.g. Waterfall or Round Robin) tend to have more complex data, and start.gg has a limit on how "complex" the data can be before giving up (1000 objects). If the data is too complex, setting this value lower will also lower the complexity.
+
 ### output
 `MaxLinked` will stop the program from using {{Sm}} for players if they ranked lower than the value. This is to prevent redlinks for players that have poor results and thus will not likely be notable enough for an article.
 
