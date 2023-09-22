@@ -176,21 +176,27 @@ def get_flag(standing_data: dict):
 	return c
 
 
-def smasher_link(name, flag="", link=True):
+def smasher_link(name, flag="", disambig="", enable_link=True):
 	"""
+	Helper function to create links to Smasher pages
+	:param name: Smasher's name
 	:type name: str
+	:param disambig: Specifier if more than one Smasher has the same name. The "p=" in the {{Sm}} template
+	:type disambig: str
+	:param flag: The flag to display
 	:type flag: str
-	:type link: bool
+	:type enable_link: bool
 	:return: str
 	"""
-	if link:
+	if enable_link:
+		sm_str = "{{Sm|" + name + "}}"
+		if disambig != "":
+			sm_str = sm_str.replace("}}", "|p=" + disambig + "}}")
 		if flag != "":
-			sm_str = "{{Sm|" + name + "|" + flag + "}}"
-		else:
-			sm_str = "{{Sm|" + name + "}}"
+			sm_str = sm_str.replace("}}", "|"+flag+"}}")
 	else:
 		if flag != "":
-			sm_str = "{{Flag|" + flag + "}} " + name
+			sm_str = "{{Flag|"+flag+"}} "+name
 		else:
 			sm_str = name
 
