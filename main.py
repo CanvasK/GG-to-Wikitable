@@ -265,9 +265,9 @@ if len(eventsToQueryList) == 0:
 print(eventsToQueryList)
 
 
+# ===================================== Query =====================================
 # Go through every event
 for event in eventsToQueryList:
-	# ===================================== Query =====================================
 
 	print_time()
 	print("="*10 + " Starting queries")
@@ -300,7 +300,7 @@ for event in eventsToQueryList:
 	phaseBrackets = []
 	for phase in phaseData:
 		if phase['groupCount'] == 1:
-			phaseBrackets.append("[{0} {1}]".format(phase['phaseGroups']['nodes'][0]['bracketUrl'], phase['name']))
+			phaseBrackets.append("[{0} {1}]".format(phase['phaseGroups']['nodes'][0]['bracketUrl'], phase['name'] if "bracket" in phase['name'].lower() else phase['name'] + " Bracket"))
 
 	# Get game ID
 	eventMainInfo["Game ID"] = eventMainData['videogame']['id']
