@@ -342,10 +342,8 @@ for event in eventsToQueryList:
 		eventMainInfo["Team size"] = int(eventMainData['teamRosterSize']['maxPlayers'])
 
 	# Determine query based on team size
-	if eventMainInfo["Team size"] == 1:
-		targetQuery = querySingles
-	elif eventMainInfo["Team size"] == 2:
-		targetQuery = queryDoubles
+	if eventMainInfo["Team size"] == 1 or eventMainInfo["Team size"] == 2:
+		targetQuery = queryStandings
 	else:
 		print("Unsupported type")
 		end_pause()
@@ -439,9 +437,9 @@ for event in eventsToQueryList:
 
 			entrantID = row['entrant']['id']
 
-			smasherName = row['entrant']['name'].split("|")[-1].strip()
-			country = helper_functions.get_flag(row)
-			smasherString = helper_functions.smasher_link(smasherName, country, row['placement'] <= activeSettings["MaxLinked"])
+			smasherName = row['entrant']['participants'][0]['gamerTag']
+			country = helper_functions.get_flag(row['entrant']['participants'][0])
+			smasherString = helper_functions.smasher_link(name=smasherName, flag=country, enable_link=row['placement'] <= activeSettings["MaxLinked"])
 
 			charHeads = ""
 
@@ -491,14 +489,14 @@ for event in eventsToQueryList:
 
 			entrantID = row['entrant']['id']
 
-			teamMembers = row['entrant']['team']['members']
+			teamMembers = row['entrant']['participants']
 			smasherStrings = []
 			charHeads = ""
 
 			for i in range(2):
-				sName = teamMembers[i]['participant']['gamerTag'].split("|")[-1].strip()
-				sCountry = helper_functions.get_flag(teamMembers[i]['participant'])
-				sString = helper_functions.smasher_link(sName, sCountry, row['placement'] <= activeSettings["MaxLinked"])
+				sName = teamMembers[i]['gamerTag']
+				sCountry = helper_functions.get_flag(teamMembers[i])
+				sString = helper_functions.smasher_link(name=sName, flag=sCountry, enable_link=row['placement'] <= activeSettings["MaxLinked"])
 
 				smasherStrings.append(sString)
 

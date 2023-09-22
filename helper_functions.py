@@ -166,10 +166,10 @@ def get_flag(standing_data: dict):
 	:return: str
 	"""
 	c = ""
-	if standing_data['player']['user'] is not None:
-		if standing_data['player']['user']['location'] is not None:
-			if standing_data['player']['user']['location']['country'] is not None:
-				c = standing_data['player']['user']['location']['country']
+	if standing_data['user'] is not None:
+		if standing_data['user']['location'] is not None:
+			if standing_data['user']['location']['country'] is not None:
+				c = standing_data['user']['location']['country']
 
 	if c in countryShort:
 		c = countryShort[c]
