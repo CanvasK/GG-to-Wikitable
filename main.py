@@ -27,6 +27,17 @@ with open("game IDs.txt") as g:
 			value = [v.strip() for v in value.split(",")]
 			gameNameByStartGGID[key] = {"full": value[0], "short": value[1]}
 
+playerNamebyStartGGDiscrim = dict()
+with open("gg discriminator to wiki.tsv") as d:
+	for line in d:
+		if not line.startswith("#"):
+			key, value = line.split("\t", 1)
+			key = str(key)
+			value = [v.strip() for v in value.split("\t")]
+			if len(value) == 1:
+				playerNamebyStartGGDiscrim[key] = [value[0]]
+			else:
+				playerNamebyStartGGDiscrim[key] = [value[0], value[1]]
 
 config = configparser.ConfigParser()
 config.read('config.cfg')
@@ -409,7 +420,33 @@ for event in eventsToQueryList:
 			country = helper_functions.get_flag(row['entrant']['participants'][0])
 			smasherString = helper_functions.smasher_link(name=smasherName, flag=country, enable_link=row['placement'] <= activeSettings["MaxLinked"])
 
-			charHeads = ""
+			for t in range(len(playerData["userDiscriminator#"])):
+				if playerData["userDiscriminator#"][t] != "" and playerData["userDiscriminator#"][t] in playerNamebyStartGGDiscrim:
+					playerNameFromDiscrim = playerNamebyStartGGDiscrim[playerData["userDiscriminator#"][t]]
+					if len(playerNameFromDiscrim) == 2:
+						playerData['playerName#'].append(
+							helper_functions.smasher_link(
+								name=playerNameFromDiscrim[0],
+								disambig=playerNameFromDiscrim[1],
+								flag=playerData["userCountry#"][t],
+								enable_link=playerData["placementRaw"] <= activeSettings["MaxLinked"])
+						)
+					else:
+						playerData['playerName#'].append(
+							helper_functions.smasher_link(
+								name=playerNameFromDiscrim[0],
+								flag=playerData["userCountry#"][t],
+								enable_link=playerData["placementRaw"] <= activeSettings["MaxLinked"])
+						)
+				else:
+					playerData['playerName#'].append(
+						helper_functions.smasher_link(
+							name=playerData["participantGamerTag#"][t],
+							flag=playerData["userCountry#"][t],
+							enable_link=playerData["placementRaw"] <= activeSettings["MaxLinked"])
+					)
+				playerData['playerChars#'].append("")
+
 
 			# DQ stuff
 			setList = row['entrant']['paginatedSets']['nodes']
