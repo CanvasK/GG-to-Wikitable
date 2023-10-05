@@ -152,6 +152,10 @@ mainSettings = {
 	"MaxPlacement": config.getint('request', 'MaxPlacement'),
 	"MaxPages": config.getint('request', 'MaxPages'),
 	"PerPage": config.getint('request', 'PerPage'),
+	"TableHeaderSingle": config.get('format', 'TableHeaderSingle'),
+	"TableRowSingle": config.get('format', 'TableRowSingle'),
+	"TableHeaderDouble": config.get('format', 'TableHeaderDouble'),
+	"TableRowDouble": config.get('format', 'TableRowDouble'),
 	"MaxLinked": config.getint('output', 'MaxLinked'),
 	"MaxDQ": config.getint('output', 'MaxDQ'),
 	"OutputInfo": config.getboolean('output', 'OutputInfo')
@@ -161,22 +165,16 @@ with open("targets.txt", 'r', encoding='utf-8') as t:
 	TempEventsToQuery = []
 	for line in t:
 		tempSettings = mainSettings.copy()
-		# Ignore comments
-		if not line.startswith("#"):
-			# Skip blank lines
-			if len(line) > 0:
-				# If the line contains config info
-				if ";" in line:
+
+		if not line.startswith("#"):  # Ignore comments
+			if len(line) > 0:  # Skip blank lines
+				if ";" in line:  # If the line contains config info
 					slug, setting = line.split(";", 1)
-					# Configs are comma-separated
-					for s in setting.split(","):
-						# For each key in the settings
-						for k in tempSettings:
-							# If the current config starts with the key
-							if s.strip().startswith(k):
+					for s in setting.split(","):  # Configs are comma-separated
+						for k in tempSettings:  # For each key in the settings
+							if s.strip().startswith(k):  # If the current config starts with the key
 								_s = s.split("=")[-1].strip()
 								# Try to cast to a reasonable type
-								# Only ints or bools are used as settings, so no str check
 								try:
 									tempSettings[k] = int(_s)
 								except ValueError as e:
@@ -184,7 +182,7 @@ with open("targets.txt", 'r', encoding='utf-8') as t:
 									try:
 										tempSettings[k] = bool(_s)
 									except ValueError:
-										continue
+										tempSettings[k] = str(_s)
 				# If no config, then line is likely just slug
 				else:
 					slug = line.strip()
@@ -407,18 +405,38 @@ for event in eventsToQueryList:
 	dqOrder = []
 	outputTableString = ""
 
-	# Team size = 1 || SINGLES
 	if eventMainInfo["Team size"] == 1:
-		outputTableString = """{|class="wikitable" style="text-align:center"\n!Place!!Name!!Character(s)!!Earnings\n"""
-		rowString = """|-\n|{place}||{p1}||{heads}||\n"""
-		for row in standingsList:
-			placement = helper_functions.make_ordinal(row['placement'])
+		outputHeaderString = activeSettings["TableHeaderSingle"] + "\n"
+		outputRowString = activeSettings["TableRowSingle"] + "\n"
+	elif eventMainInfo["Team size"] == 2:
+		outputHeaderString = activeSettings["TableHeaderDouble"] + "\n"
+		outputRowString = activeSettings["TableRowDouble"] + "\n"
+	else:
+		outputHeaderString = activeSettings["TableHeaderSingle"] + "\n"
+		outputRowString = activeSettings["TableRowSingle"] + "\n"
 
-			entrantID = row['entrant']['id']
+	# Handle escape characters
+	outputHeaderString = bytes(outputHeaderString, "utf-8").decode('unicode_escape')
+	outputRowString = bytes(outputRowString, "utf-8").decode('unicode_escape')
+	if eventMainInfo["Team size"] == 1 or eventMainInfo["Team size"] == 2:
+		outputTableString += outputHeaderString
 
-			smasherName = row['entrant']['participants'][0]['gamerTag']
-			country = helper_functions.get_flag(row['entrant']['participants'][0])
-			smasherString = helper_functions.smasher_link(name=smasherName, flag=country, enable_link=row['placement'] <= activeSettings["MaxLinked"])
+		for standing in standingsList:
+			playerData = {
+				"placementRaw": standing['placement'],
+				"placement": standing['placement'],
+				"entrantID": standing['entrant']['id'],
+				"entrantName": standing['entrant']['name'],
+				"participantID#": [x['id'] for x in standing['entrant']['participants']],
+				"participantGamerTag#": [x['gamerTag'] for x in standing['entrant']['participants']],
+				"userID#": [standing['entrant']['participants'][i]['user']['id'] if standing['entrant']['participants'][i]['user'] is not None else None for i in range(len(standing['entrant']['participants']))],
+				"userDiscriminator#": [standing['entrant']['participants'][i]['user']['discriminator'] if standing['entrant']['participants'][i]['user'] is not None else None for i in range(len(standing['entrant']['participants']))],
+				"userCountry#": [standing['entrant']['participants'][i]['user']['location']['country'] if standing['entrant']['participants'][i]['user'] is not None and standing['entrant']['participants'][i]['user']['location'] is not None else None for i in range(len(standing['entrant']['participants']))],
+				"playerName#": [],
+				"playerChars#": []
+			}
+
+			playerData['placement'] = helper_functions.make_ordinal(playerData['placementRaw'])
 
 			for t in range(len(playerData["userDiscriminator#"])):
 				if playerData["userDiscriminator#"][t] != "" and playerData["userDiscriminator#"][t] in playerNamebyStartGGDiscrim:
@@ -449,71 +467,14 @@ for event in eventsToQueryList:
 
 
 			# DQ stuff
-			setList = row['entrant']['paginatedSets']['nodes']
-
-			dqJudgement, dqSets = helper_functions.dq_judge(entrantID, setList, activeSettings["MaxDQ"])
-
-			if dqJudgement == "pass":
-				pass
-			elif dqJudgement == "full":
-				smasherString += " (DQ)"
-				# noinspection PyTypeChecker
-				eventMainInfo["DQ count"]["Full"] += 1
-			else:
-				if dqJudgement == "losers":
-					if dqJudgement not in dqOrder:
-						dqOrder.append(dqJudgement)
-				# noinspection PyTypeChecker
-				eventMainInfo["DQ count"]["Losers"] += 1
-				if dqJudgement == "winners":
-					if dqJudgement not in dqOrder:
-						dqOrder.append(dqJudgement)
-				# noinspection PyTypeChecker
-				eventMainInfo["DQ count"]["Winners"] += 1
-				placement += "*" * (dqOrder.index(dqJudgement) + 1)
-
-			# If the sets played are nothing but DQs, list characters as a dash
-			if dqSets.count(0) == 0:
-				charHeads = "&mdash;"
-
-			# Append to table
-			outputTableString += rowString.format(place=placement,
-												  p1=smasherString,
-												  heads=charHeads)
-
-		outputTableString = outputTableString.replace("||||", "|| ||")
-
-		outputTableString += "|}"
-
-	# Team size = 2 || DOUBLES
-	elif eventMainInfo["Team size"] == 2:
-		outputTableString = """{|class="wikitable" style="text-align:center"\n!Place!!Name!!Character(s)!!Name!!Character(s)!!Earnings\n"""
-		rowString = """|-\n|{place}||{p1}||{h1}||{p2}||{h2}||\n"""
-		for row in standingsList:
-			placement = helper_functions.make_ordinal(row['placement'])
-
-			entrantID = row['entrant']['id']
-
-			teamMembers = row['entrant']['participants']
-			smasherStrings = []
-			charHeads = ""
-
-			for i in range(2):
-				sName = teamMembers[i]['gamerTag']
-				sCountry = helper_functions.get_flag(teamMembers[i])
-				sString = helper_functions.smasher_link(name=sName, flag=sCountry, enable_link=row['placement'] <= activeSettings["MaxLinked"])
-
-				smasherStrings.append(sString)
-
-			# DQ stuff
-			setList = row['entrant']['paginatedSets']['nodes']
-			dqJudgement, dqSets = helper_functions.dq_judge(entrantID, setList, activeSettings["MaxDQ"])
+			setList = standing['entrant']['paginatedSets']['nodes']
+			dqJudgement, dqSets = helper_functions.dq_judge(playerData['entrantID'], setList, activeSettings["MaxDQ"])
 
 			if dqJudgement == "pass":
 				pass
 			elif dqJudgement == "full":
-				for i in range(len(smasherStrings)):
-					smasherStrings[i] += " (DQ)"
+				for t in range(len(playerData['playerName#'])):
+					playerData['playerName#'][t] += " (DQ)"
 					# noinspection PyTypeChecker
 					eventMainInfo["DQ count"]["Full"] += 1
 			else:
@@ -527,20 +488,25 @@ for event in eventsToQueryList:
 						dqOrder.append(dqJudgement)
 				# noinspection PyTypeChecker
 				eventMainInfo["DQ count"]["Winners"] += 1
-				placement += "*" * (dqOrder.index(dqJudgement) + 1)
+				playerData['placement'] += "*"*(dqOrder.index(dqJudgement) + 1)
 
 			# If the sets played are nothing but DQs, list characters as a dash
 			if dqSets.count(0) == 0:
-				charHeads = "&mdash;"
+				for t in range(len(playerData["playerChars#"])):
+					playerData["playerChars#"][t] = "&mdash;"
 
-			# Append to table
-			outputTableString += rowString.format(place=placement,
-												  p1=smasherStrings[0],
-												  p2=smasherStrings[1],
-												  h1=charHeads, h2=charHeads)
+			rowString = outputRowString
+			# Replace every format string with the corresponding value
+			for d in playerData:
+				if "#" in d:
+					for i in range(len(playerData[d])):
+						rowString = rowString.replace("{"+d.replace("#", str(i+1))+"}", str(playerData[d][i]))
+				else:
+					rowString = rowString.replace("{"+d+"}", str(playerData[d]))
+
+			outputTableString += rowString
 
 		outputTableString = outputTableString.replace("||||", "|| ||")
-
 		outputTableString += "|}"
 
 	# Add asterisk notes to the end of the table
@@ -569,6 +535,7 @@ for event in eventsToQueryList:
 		elif eventMainInfo["Team size"] == 2:
 			f.write(headerString.format(gameNameByStartGGID[eventMainInfo["Game ID"]]["full"], "doubles"))
 			f.write("({0:,} teams)<br>\n".format(eventMainInfo["Entrant count"]))
+
 		# Bracket(s)
 		for i in range(len(phaseBrackets)):
 			# The last bracket does not get a <br>
