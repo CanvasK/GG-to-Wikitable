@@ -12,7 +12,7 @@ import re
 
 # Query related stuff
 
-def base_gg_query(query, variables, auth, auto_retry=True, retry_delay=10):
+def base_gg_query(query, variables, auth, auto_retry=True, retry_delay=10, retry_attempts=4):
 	"""
 
 	:type query: str
@@ -25,79 +25,107 @@ def base_gg_query(query, variables, auth, auto_retry=True, retry_delay=10):
 	:param auto_retry: If the query should be run again if an error occurs
 	:type retry_delay: int
 	:param retry_delay: Time between auto retries
+	:type retry_attempts: int
+	:param retry_attempts: Number of retries
 	:return:
 	:rtype: dict
 	"""
 
-	def _gg_query(query, variables, auth, auto_retry, retry_delay):
+	def err_print(err, err_response):
+		print()
+		print(err)
+		print(err_response)
+
+	def sleep_print(s):
+		_s = s
+		while _s >= 0:
+			print(f"\r{_s}...", end='')
+			time.sleep(1)
+			_s = _s - 1
+		print()
+
+	def _gg_query(query, variables, auth, auto_retry, retry_delay, retry_attempts):
 		header = {"Authorization": "Bearer " + auth, "Content-Type": "application/json"}
 		json_request = {'query': query, 'variables': variables}
 
-		def err_prnt(err, err_response):
-			print()
-			print(err)
-			print(err_response)
-
 		try:
+			if retry_attempts == 0:
+				raise TooManyRetriesError
+
 			req = urllib.request.Request('https://api.smash.gg/gql/alpha', data=json.dumps(json_request).encode('utf-8'), headers=header)
-			response = urllib.request.urlopen(req, timeout=20)
+			response = urllib.request.urlopen(req, timeout=300)
 			if response.getcode() == 400:
 				raise BadRequestError
 			elif response.getcode() == 429:  # too many requests
 				raise TooManyRequestsError
 			elif response.getcode() == 503:  # service unavailable
 				raise ServiceUnavailableError
+			elif response.getcode() == 504:  # Gateway time-out
+				raise GatewayTimeOutError
 
 			res = response.read()
 			response.close()
 			try:
 				return json.loads(res)
 			except json.decoder.JSONDecodeError as e:
-				err_prnt(e, "Received invalid JSON from server, trying again in {} seconds".format(retry_delay))
+				err_print(e, "Received invalid JSON from server, trying again in {} seconds".format(retry_delay))
 				time.sleep(retry_delay)
-				return _gg_query(query, variables, auth, auto_retry, retry_delay * 2)
+				return _gg_query(query, variables, auth, auto_retry, retry_delay * 2, retry_attempts - 1)
+
+		except TooManyRetriesError as e:
+			err_print(e, "The query has failed too many times. Try again later or try a different query")
+			return
 
 		except BadRequestError as e:
-			err_prnt(e, "400: Bad request. Good chance the authorization key isn't valid")
+			err_print(e, "400: Bad request. Good chance the authorization key isn't valid")
 			return
 
 		except TooManyRequestsError as e:
 			if auto_retry:
-				err_prnt(e, "429: Too many requests right now, trying again in {} seconds".format(retry_delay))
-				time.sleep(retry_delay)
-				return _gg_query(query, variables, auth, auto_retry, retry_delay * 2)
+				err_print(e, "429: Too many requests right now, trying again in {} seconds".format(retry_delay))
+				sleep_print(retry_delay)
+				return _gg_query(query, variables, auth, auto_retry, retry_delay * 2, retry_attempts - 1)
 			else:
-				err_prnt(e, "429: Too many requests right now")
+				err_print(e, "429: Too many requests right now")
 				return
 
 		except ServiceUnavailableError as e:
 			if auto_retry:
-				err_prnt(e, "503: start.gg servers are trash, trying again in {} seconds".format(retry_delay))
-				time.sleep(retry_delay)
-				return _gg_query(query, variables, auth, auto_retry, retry_delay * 2)
+				err_print(e, "503: start.gg servers are trash, trying again in {} seconds".format(retry_delay))
+				sleep_print(retry_delay)
+				return _gg_query(query, variables, auth, auto_retry, retry_delay * 2, retry_attempts - 1)
 			else:
-				err_prnt(e, "503: start.gg servers are trash")
+				err_print(e, "503: start.gg servers are trash")
+				return
+
+		except GatewayTimeOutError as e:
+			if auto_retry:
+				err_print(e, "504: start.gg servers timed out, trying again in {} seconds".format(retry_delay))
+				sleep_print(retry_delay)
+				return _gg_query(query, variables, auth, auto_retry, retry_delay * 2, retry_attempts - 1)
+			else:
+				err_print(e, "504: start.gg servers timed out")
 				return
 
 		except urllib.error.HTTPError as e:
 			if auto_retry:
-				err_prnt(e, "Service unavailable, trying again in {} seconds".format(retry_delay))
-				time.sleep(retry_delay)
-				return _gg_query(query, variables, auth, auto_retry, retry_delay * 2)
+				err_print(e, "Service unavailable, trying again in {} seconds".format(retry_delay))
+				sleep_print(retry_delay)
+				return _gg_query(query, variables, auth, auto_retry, retry_delay * 2, retry_attempts - 1)
 			else:
-				err_prnt(e, "Service unavailable")
+				err_print(e, "Service unavailable")
 				return
 
 		except urllib.error.URLError as e:
 			if auto_retry:
-				err_prnt(e, "Couldn't connect, trying again in {} seconds".format(retry_delay))
-				time.sleep(retry_delay)
-				return _gg_query(query, variables, auth, auto_retry, retry_delay * 2)
+				err_print(e, "Couldn't connect, trying again in {} seconds".format(retry_delay))
+				sleep_print(retry_delay)
+				return _gg_query(query, variables, auth, auto_retry, retry_delay * 2, retry_attempts - 1)
 			else:
-				err_prnt(e, "Couldn't connect")
+				err_print(e, "Couldn't connect")
 				return
 
-	return _gg_query(query=query, variables=variables, auth=auth, auto_retry=auto_retry, retry_delay=retry_delay)
+	return _gg_query(query=query, variables=variables, auth=auth, auto_retry=auto_retry, retry_delay=retry_delay, retry_attempts=retry_attempts)
 
 
 def event_data_slug(slug, page, per_page, query, auth):
@@ -107,6 +135,8 @@ def event_data_slug(slug, page, per_page, query, auth):
 		data = response['data']['event']
 		return data
 	except KeyError:
+		print(response)
+	except TypeError:
 		print(response)
 
 

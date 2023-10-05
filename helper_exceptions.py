@@ -8,6 +8,11 @@ class ServiceUnavailableError(Exception):
 	pass
 
 
+class GatewayTimeOutError(Exception):
+	# start.gg's servers timed-out
+	pass
+
+
 class BadRequestError(Exception):
 	# Bad request, likely auth code
 	pass
@@ -15,4 +20,9 @@ class BadRequestError(Exception):
 
 class SlugMissingError(Exception):
 	# slug is missing error
+	pass
+
+
+class TooManyRetriesError(Exception):
+	# Too many fails
 	pass
