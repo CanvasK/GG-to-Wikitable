@@ -194,7 +194,6 @@ with open("targets.txt", 'r', encoding='utf-8') as t:
 				# Add slug and settings to dict and add the dict to the list
 				# Settings default to config file if no semicolon is found
 				TempEventsToQuery.append({"slug": slug, "settings": tempSettings})
-	# print("\n" * 3)
 	eventsToQueryList = TempEventsToQuery.copy()
 
 eventsToQueryAppend = []
@@ -464,7 +463,6 @@ for event in eventsToQueryList:
 							enable_link=playerData["placementRaw"] <= activeSettings["MaxLinked"])
 					)
 				playerData['playerChars#'].append("")
-
 
 			# DQ stuff
 			setList = standing['entrant']['paginatedSets']['nodes']
