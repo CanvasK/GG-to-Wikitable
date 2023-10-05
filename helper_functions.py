@@ -189,23 +189,6 @@ with open(os.path.join(os.path.dirname(__file__), "country short.tsv"), 'r', enc
 		countryShort[key.strip()] = value.strip()
 
 
-def get_flag(standing_data: dict):
-	"""
-	Gets the user's flag. Does a bunch of checks because there are several things that can be None
-	:param standing_data: Data from the query result starting where 'GamerTag' is present
-	:return: str
-	"""
-	c = ""
-	if standing_data['user'] is not None:
-		if standing_data['user']['location'] is not None:
-			if standing_data['user']['location']['country'] is not None:
-				c = standing_data['user']['location']['country']
-
-	if c in countryShort:
-		c = countryShort[c]
-	return c
-
-
 def smasher_link(name, flag="", disambig="", enable_link=True):
 	"""
 	Helper function to create links to Smasher pages
@@ -218,14 +201,17 @@ def smasher_link(name, flag="", disambig="", enable_link=True):
 	:type enable_link: bool
 	:return: str
 	"""
+	if flag in countryShort:
+		flag = countryShort[flag]
+
 	if enable_link:
 		sm_str = "{{Sm|" + name + "}}"
-		if disambig != "":
-			sm_str = sm_str.replace("}}", "|p=" + disambig + "}}")
-		if flag != "":
+		if flag != "" and flag is not None:
 			sm_str = sm_str.replace("}}", "|"+flag+"}}")
+		if disambig != "" and disambig is not None:
+			sm_str = sm_str.replace("}}", "|p=" + disambig + "}}")
 	else:
-		if flag != "":
+		if flag != "" and flag is not None:
 			sm_str = "{{Flag|"+flag+"}} "+name
 		else:
 			sm_str = name
