@@ -8,9 +8,10 @@ import urllib.error
 import json
 import time
 import re
-
+import datetime
 
 # Query related stuff
+
 
 def base_gg_query(query, variables, auth, auto_retry=True, retry_delay=10, retry_attempts=4):
 	"""
@@ -33,6 +34,7 @@ def base_gg_query(query, variables, auth, auto_retry=True, retry_delay=10, retry
 
 	def err_print(err, err_response):
 		print()
+		print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 		print(err)
 		print(err_response)
 
