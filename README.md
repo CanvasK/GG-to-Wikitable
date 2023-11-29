@@ -20,7 +20,9 @@ Settings for the script are in `config.cfg`.
 
 `MaxDQ` will mark players as a "full DQ" if they meet or exceed the value.
 
-`OutputInfo` will output some basic info about the event, similar to what is printed during operation.
+`OutputInfo` will output some basic info about the event to `info.txt`, similar to what is printed during operation.
+
+`GoofyTagNote` will append "< ref >Entered as "[TAG]"< /ref >" if the start.gg tag is different (excluding punctuation, spacing, and casing) from the SmashWiki tag. These tags will be noted in `info.txt` regardless.
 
 ### format
 The following values can be used for the format output. They must be surrounded in curly brackets (e.g. `{placement}`). Values with a "#" in them indicate that there is more than one value to choose from (e.g. the second `userID#` value would be `{userID2}`); leaving the "#" or using an out-of-range value will result in the format string being unmodified.

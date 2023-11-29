@@ -1,6 +1,8 @@
 import helper_functions
 import helper_classes
+import helper_exceptions
 import json
+import re
 import os
 import configparser
 import time
@@ -17,6 +19,7 @@ def end_pause():
 
 print_time()
 decreasingSleep = helper_classes.Sleeper(start_time=time.time(), end_time=time.time(), target_delay=0.8)
+rePunctuationRemove = re.compile(r"[^\w]")
 
 gameNameByStartGGID = dict()
 with open("game IDs.txt") as g:
@@ -35,7 +38,7 @@ with open("gg discriminator to wiki.tsv") as d:
 			key = str(key)
 			value = [v.strip() for v in value.split("\t")]
 			if len(value) == 1:
-				playerNamebyStartGGDiscrim[key] = [value[0]]
+				playerNamebyStartGGDiscrim[key] = [value[0], None]
 			else:
 				playerNamebyStartGGDiscrim[key] = [value[0], value[1]]
 
@@ -158,7 +161,8 @@ mainSettings = {
 	"TableRowDouble": config.get('format', 'TableRowDouble'),
 	"MaxLinked": config.getint('output', 'MaxLinked'),
 	"MaxDQ": config.getint('output', 'MaxDQ'),
-	"OutputInfo": config.getboolean('output', 'OutputInfo')
+	"OutputInfo": config.getboolean('output', 'OutputInfo'),
+	"GoofyTagNote": config.getboolean('output', 'GoofyTagNote')
 }
 
 with open("targets.txt", 'r', encoding='utf-8') as t:
@@ -170,6 +174,7 @@ with open("targets.txt", 'r', encoding='utf-8') as t:
 			if len(line) > 0:  # Skip blank lines
 				if ";" in line:  # If the line contains config info
 					slug, setting = line.split(";", 1)
+
 					for s in setting.split(","):  # Configs are comma-separated
 						for k in tempSettings:  # For each key in the settings
 							if s.strip().startswith(k):  # If the current config starts with the key
@@ -188,7 +193,7 @@ with open("targets.txt", 'r', encoding='utf-8') as t:
 					slug = line.strip()
 				try:
 					slug = helper_functions.gg_slug_cleaner(slug)
-				except helper_functions.SlugMissingError as e:
+				except helper_exceptions.SlugMissingError as e:
 					print("URL/slug field is empty. Make sure there is a URL/slug at the beginning of the line in targets.txt")
 					continue
 				# Add slug and settings to dict and add the dict to the list
@@ -300,7 +305,8 @@ for event in eventsToQueryList:
 		"Is online": False,
 		"Status": "",
 		"DQ count": {"Full": 0, "Losers": 0, "Winners": 0},
-		"Prize info": ""
+		"Prize info": "",
+		"Goofy tags": {"GG NAME": "WIKI NAME"}
 	}
 
 	# Get brackets and keep only ones with 1 group
@@ -437,24 +443,29 @@ for event in eventsToQueryList:
 
 			playerData['placement'] = helper_functions.make_ordinal(playerData['placementRaw'])
 
+			# Loop through each user in the team
 			for t in range(len(playerData["userDiscriminator#"])):
+				# If the discriminator is not empty (not private) and is in the list
 				if playerData["userDiscriminator#"][t] != "" and playerData["userDiscriminator#"][t] in playerNamebyStartGGDiscrim:
 					playerNameFromDiscrim = playerNamebyStartGGDiscrim[playerData["userDiscriminator#"][t]]
-					if len(playerNameFromDiscrim) == 2:
-						playerData['playerName#'].append(
-							helper_functions.smasher_link(
-								name=playerNameFromDiscrim[0],
-								disambig=playerNameFromDiscrim[1],
-								flag=playerData["userCountry#"][t],
-								enable_link=playerData["placementRaw"] <= activeSettings["MaxLinked"])
-						)
-					else:
-						playerData['playerName#'].append(
-							helper_functions.smasher_link(
-								name=playerNameFromDiscrim[0],
-								flag=playerData["userCountry#"][t],
-								enable_link=playerData["placementRaw"] <= activeSettings["MaxLinked"])
-						)
+
+					compareGGNameLower = rePunctuationRemove.sub("", playerData["participantGamerTag#"][t].lower())
+					compareWikiNameLower = rePunctuationRemove.sub("", playerNameFromDiscrim[0].lower())
+
+					goofyTag = ""
+
+					if compareGGNameLower != compareWikiNameLower:
+						eventMainInfo["Goofy tags"][compareGGNameLower] = compareWikiNameLower
+						if activeSettings["GoofyTagNote"]:
+							goofyTag = "<ref>Entered as \"" + str(playerData["participantGamerTag#"][t]) + "\"</ref>"
+
+					playerData['playerName#'].append(
+						helper_functions.smasher_link(
+							name=playerNameFromDiscrim[0], disambig=playerNameFromDiscrim[1],
+							flag=playerData["userCountry#"][t],
+							enable_link=playerData["placementRaw"] <= activeSettings["MaxLinked"]) + goofyTag
+					)
+				# Default to using start.gg tag
 				else:
 					playerData['playerName#'].append(
 						helper_functions.smasher_link(
@@ -462,6 +473,7 @@ for event in eventsToQueryList:
 							flag=playerData["userCountry#"][t],
 							enable_link=playerData["placementRaw"] <= activeSettings["MaxLinked"])
 					)
+				# Do nothing with characters for now
 				playerData['playerChars#'].append("")
 
 			# DQ stuff
@@ -522,6 +534,7 @@ for event in eventsToQueryList:
 	outputPath = os.path.join("outputs", str(activeSlug).replace("tournament/", "").replace("/event/", "/"))
 	if not os.path.exists(outputPath):
 		os.makedirs(outputPath)
+		print("="*10 + "Creating directory: " + outputPath.replace("/", "\\"))
 
 	print("="*10 + " Writing to \"" + outputPath.replace("/", "\\") + "\\output.txt\" ")
 
