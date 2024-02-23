@@ -10,6 +10,18 @@ import time
 import re
 import datetime
 
+
+def err_print(err, err_response, wait=False):
+	print()
+	print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+	print(err)
+	print(err_response)
+	if wait:
+		pass
+		# input("Press any key to close")
+		# exit()
+
+
 # Query related stuff
 
 
@@ -32,12 +44,6 @@ def base_gg_query(query, variables, auth, auto_retry=True, retry_delay=10, retry
 	:rtype: dict
 	"""
 
-	def err_print(err, err_response):
-		print()
-		print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-		print(err)
-		print(err_response)
-
 	def sleep_print(s):
 		_s = s
 		while _s >= 0:
@@ -55,31 +61,41 @@ def base_gg_query(query, variables, auth, auto_retry=True, retry_delay=10, retry
 				raise TooManyRetriesError
 
 			req = urllib.request.Request('https://api.smash.gg/gql/alpha', data=json.dumps(json_request).encode('utf-8'), headers=header)
-			response = urllib.request.urlopen(req, timeout=300)
-			if response.getcode() == 400:
-				raise BadRequestError
-			elif response.getcode() == 429:  # too many requests
-				raise TooManyRequestsError
-			elif response.getcode() == 503:  # service unavailable
-				raise ServiceUnavailableError
-			elif response.getcode() == 504:  # Gateway time-out
-				raise GatewayTimeOutError
+			try:
+				response = urllib.request.urlopen(req, timeout=300)
+			except urllib.error.HTTPError as e:
+				# print(e.getcode())
+				if e.getcode() == 400:
+					raise BadRequestError
+				elif e.getcode() == 429:  # too many requests
+					raise TooManyRequestsError
+				elif e.getcode() == 503:  # service unavailable
+					raise ServiceUnavailableError
+				elif e.getcode() == 504:  # Gateway time-out
+					raise GatewayTimeOutError
+				else:
+					return
 
 			res = response.read()
 			response.close()
+
 			try:
-				return json.loads(res)
+				j = json.loads(res)
+				if "errors" in j:
+					if "Your query complexity is too high" in j["errors"][0]["message"]:
+						raise QueryTooComplexError
+				return j
 			except json.decoder.JSONDecodeError as e:
 				err_print(e, "Received invalid JSON from server, trying again in {} seconds".format(retry_delay))
 				time.sleep(retry_delay)
 				return _gg_query(query, variables, auth, auto_retry, retry_delay * 2, retry_attempts - 1)
 
 		except TooManyRetriesError as e:
-			err_print(e, "The query has failed too many times. Try again later or try a different query")
+			err_print(e, "The query has failed too many times. Try again later or try a different query", wait=True)
 			return
 
 		except BadRequestError as e:
-			err_print(e, "400: Bad request. Good chance the authorization key isn't valid")
+			err_print(e, "400: Bad request. Good chance the authorization key isn't valid", wait=True)
 			return
 
 		except TooManyRequestsError as e:
@@ -109,6 +125,15 @@ def base_gg_query(query, variables, auth, auto_retry=True, retry_delay=10, retry
 				err_print(e, "504: start.gg servers timed out")
 				return
 
+		except QueryTooComplexError as e:
+			# if auto_retry:
+			# 	err_print(e, "Query is too complex. Try decreasing PerPage in the config. Trying again in {} seconds".format(retry_delay))
+			# 	sleep_print(retry_delay)
+			# 	return _gg_query(query, variables, auth, auto_retry, retry_delay * 2, retry_attempts - 1)
+			# else:
+			err_print(e, "Query is too complex. Try decreasing PerPage in the config.", wait=True)
+			return
+
 		except urllib.error.HTTPError as e:
 			if auto_retry:
 				err_print(e, "Service unavailable, trying again in {} seconds".format(retry_delay))
@@ -136,10 +161,10 @@ def event_data_slug(slug, page, per_page, query, auth):
 	try:
 		data = response['data']['event']
 		return data
-	except KeyError:
-		print(response)
-	except TypeError:
-		print(response)
+	except KeyError as e:
+		err_print(e, response)
+	except TypeError as e:
+		err_print(e, response)
 
 
 # Slug related stuff

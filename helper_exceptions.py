@@ -26,3 +26,8 @@ class SlugMissingError(Exception):
 class TooManyRetriesError(Exception):
 	# Too many fails
 	pass
+
+
+class QueryTooComplexError(Exception):
+	# Query complexity exceeds 1_000. Likely needs smaller PerPage
+	pass
